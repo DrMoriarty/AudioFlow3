@@ -82,3 +82,7 @@ CMakeLists.txt.user*
 .uic/
 /build*/
 /.qtcreator/
+.lupdate
+.qt
+AudioFlow3_autogen
+CMakeFiles

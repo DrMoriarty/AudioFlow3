@@ -11,6 +11,9 @@ qt_add_executable(AudioFlow3
     mainwindow.cpp
     mainwindow.h
     mainwindow.ui
+    collapsibleblock.cpp
+    collapsibleblock.h
+    AudioFlow3.qrc
 )
 
 qt_add_translations(

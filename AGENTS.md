@@ -8,6 +8,8 @@ Qt6 Desktop Application (C++ with CMake)
 - `main.cpp` - Application entry point
 - `mainwindow.cpp/h` - Main window implementation
 - `mainwindow.ui` - Qt Designer UI file
+- `collapsibleblock.cpp/h` - Collapsible block widget component
+- `AudioFlow3.qrc` - Qt resource file
 - `AudioFlow3_en_001.ts` - English translation source
 
 ## Build Commands
@@ -17,11 +19,13 @@ cmake -B build -S .
 cmake --build build
 
 # Run
-./build/AudioFlow3
+./build/AudioFlow3.app/Contents/MacOS/AudioFlow3
 ```
 
 ## Architecture
 - Single-window Qt Widgets application
+- Fixed width (600px), height adapts to content
+- Main window contains 5 collapsible blocks in vertical layout
 - Uses Qt's translation system (i18n)
 - UI defined in `mainwindow.ui` (Qt Designer format)
 
