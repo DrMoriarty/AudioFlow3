@@ -17,6 +17,28 @@ qt_add_executable(AudioFlow3
     knobwidget.h
     toggleswitch.cpp
     toggleswitch.h
+    src/audioflow.cpp
+    src/audioflow.h
+    src/processing.cpp
+    src/processing.h
+    src/fileutils/globals.cpp
+    src/fileutils/globals.h
+    src/fileutils/config.cpp
+    src/fileutils/config.h
+    src/fileutils/readIRFile.cpp
+    src/fileutils/readIRFile.h
+    src/processing/audioProcessor.cpp
+    src/processing/audioProcessor.h
+    src/processing/amplifier.cpp
+    src/processing/amplifier.h
+    src/processing/convolutionReverb.cpp
+    src/processing/convolutionReverb.h
+    src/processing/equalizer.cpp
+    src/processing/equalizer.h
+    src/processing/iirFilter.cpp
+    src/processing/iirFilter.h
+    src/processing/smoother.cpp
+    src/processing/smoother.h
     AudioFlow3.qrc
 )
 
@@ -25,10 +47,15 @@ qt_add_translations(
     TS_FILES AudioFlow3_en_001.ts
 )
 
+find_library(COREAUDIO_LIB CoreAudio)
+find_library(ACCELERATE_LIB Accelerate)
+
 target_link_libraries(AudioFlow3
     PRIVATE
         Qt::Core
         Qt::Widgets
+        ${COREAUDIO_LIB}
+        ${ACCELERATE_LIB}
 )
 
 install(TARGETS AudioFlow3
