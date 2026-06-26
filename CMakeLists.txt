@@ -13,6 +13,8 @@ qt_add_executable(AudioFlow3
     mainwindow.ui
     collapsibleblock.cpp
     collapsibleblock.h
+    knobwidget.cpp
+    knobwidget.h
     AudioFlow3.qrc
 )
 

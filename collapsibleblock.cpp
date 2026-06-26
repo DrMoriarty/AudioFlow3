@@ -5,6 +5,7 @@
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QSizePolicy>
+#include <QLayout>
 
 CollapsibleBlock::CollapsibleBlock(const QString &title, QWidget *parent)
     : QFrame(parent), m_expanded(false)
@@ -12,9 +13,9 @@ CollapsibleBlock::CollapsibleBlock(const QString &title, QWidget *parent)
     setFrameShape(QFrame::StyledPanel);
     setStyleSheet(
         "CollapsibleBlock {"
-        "  border: 1px solid #808080;"
+        "  border: 2px solid #606468;"
         "  border-radius: 8px;"
-        "  background-color: #505050;"
+        "  background-color: #202428;"
         "}"
     );
 
@@ -23,12 +24,14 @@ CollapsibleBlock::CollapsibleBlock(const QString &title, QWidget *parent)
     m_mainLayout->setSpacing(0);
 
     QWidget *headerWidget = new QWidget(this);
+    headerWidget->setObjectName("headerWidget");
+    m_headerWidget = headerWidget;
     headerWidget->setStyleSheet(
-        "QWidget {"
-        "  border-bottom: 1px solid #808080;"
+        "QWidget#headerWidget {"
+        "  border-bottom: 2px solid #606468;"
         "  border-top-left-radius: 8px;"
         "  border-top-right-radius: 8px;"
-        "  background-color: #303030;"
+        "  background-color: #303438;"
         "}"
     );
     QHBoxLayout *headerLayout = new QHBoxLayout(headerWidget);
@@ -42,7 +45,7 @@ CollapsibleBlock::CollapsibleBlock(const QString &title, QWidget *parent)
         "  font-size: 12px;"
         "}"
         "QPushButton:hover {"
-        "  background-color: #808080;"
+        "  background-color: #606468;"
         "  border-radius: 3px;"
         "}"
     );
@@ -72,13 +75,14 @@ CollapsibleBlock::CollapsibleBlock(const QString &title, QWidget *parent)
         "QWidget {"
         "  border-bottom-left-radius: 7px;"
         "  border-bottom-right-radius: 7px;"
-        "  background-color: #505050;"
+        "  background-color: #202428;"
         "}"
     );
     m_mainLayout->addWidget(m_contentWidget);
 
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-    setMinimumHeight(30);
+
+    headerWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 }
 
 void CollapsibleBlock::setContentWidget(QWidget *widget)
@@ -89,7 +93,6 @@ void CollapsibleBlock::setContentWidget(QWidget *widget)
     }
 
     m_contentWidget = widget;
-    m_contentWidget->setMinimumHeight(30);
     m_contentWidget->setVisible(m_expanded);
     m_mainLayout->addWidget(m_contentWidget);
 }
@@ -117,4 +120,14 @@ void CollapsibleBlock::toggle()
 void CollapsibleBlock::updateChevron()
 {
     m_toggleButton->setText(m_expanded ? "▼" : "▶");
+}
+
+QWidget *CollapsibleBlock::headerWidget() const
+{
+    return m_headerWidget;
+}
+
+QWidget *CollapsibleBlock::contentWidget() const
+{
+    return m_contentWidget;
 }

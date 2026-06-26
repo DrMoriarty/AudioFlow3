@@ -18,6 +18,8 @@ public:
     void setContentWidget(QWidget *widget);
     void setExpanded(bool expanded);
     bool isExpanded() const;
+    QWidget *headerWidget() const;
+    QWidget *contentWidget() const;
 
 signals:
     void expandedChanged();
@@ -30,6 +32,7 @@ private:
 
     QPushButton *m_toggleButton;
     QLabel *m_titleLabel;
+    QWidget *m_headerWidget;
     QWidget *m_contentWidget;
     QVBoxLayout *m_mainLayout;
     bool m_expanded;

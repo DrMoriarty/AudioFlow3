@@ -9,6 +9,7 @@ Qt6 Desktop Application (C++ with CMake)
 - `mainwindow.cpp/h` - Main window implementation
 - `mainwindow.ui` - Qt Designer UI file
 - `collapsibleblock.cpp/h` - Collapsible block widget component
+- `knobwidget.cpp/h` - Custom knob (rotary) control for fixed dB values
 - `AudioFlow3.qrc` - Qt resource file
 - `AudioFlow3_en_001.ts` - English translation source
 
@@ -24,8 +25,10 @@ cmake --build build
 
 ## Architecture
 - Single-window Qt Widgets application
-- Fixed width (600px), height adapts to content
+- Fixed width (600px), height adapts to content via `setFixedSize()` + `adjustSize()`
 - Main window contains 5 collapsible blocks in vertical layout
+- Block 1 ("Correcting") has content: IR combo, Load IR button, Dry/Wet slider, dB knob
+- Custom `KnobWidget`: click cycles through fixed dB values, shows current value below knob
 - Uses Qt's translation system (i18n)
 - UI defined in `mainwindow.ui` (Qt Designer format)
 
