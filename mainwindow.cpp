@@ -66,7 +66,7 @@ void MainWindow::setupBlocks()
         tr("Correcting"),
         tr("Preamplifier"),
         tr("Блок 3"),
-        tr("Блок 4"),
+        tr("Convolver"),
         tr("Блок 5")
     };
 
@@ -171,6 +171,44 @@ void MainWindow::setupBlocks()
     paLayout->addLayout(sliderLabelLayout);
 
     m_blocks[1]->setContentWidget(preampContent);
+
+    QWidget *convolverContent = new QWidget();
+    QVBoxLayout *cvLayout = new QVBoxLayout(convolverContent);
+    cvLayout->setContentsMargins(8, 4, 8, 4);
+    cvLayout->setSpacing(4);
+
+    QLabel *spaceLabel = new QLabel(tr("Space"));
+    cvLayout->addWidget(spaceLabel);
+
+    QHBoxLayout *spaceRowLayout = new QHBoxLayout();
+    spaceRowLayout->setContentsMargins(0, 0, 0, 0);
+    spaceRowLayout->setSpacing(8);
+    QComboBox *spaceCombo = new QComboBox();
+    spaceCombo->addItem(tr("Flat"));
+    spaceRowLayout->addWidget(spaceCombo, 1);
+    QPushButton *customBtn = new QPushButton(tr("Custom"));
+    spaceRowLayout->addWidget(customBtn);
+    cvLayout->addLayout(spaceRowLayout);
+
+    QHBoxLayout *wetMixHeader = new QHBoxLayout();
+    wetMixHeader->setContentsMargins(0, 0, 0, 0);
+    wetMixHeader->setSpacing(8);
+    QLabel *cvMixLabel = new QLabel(tr("Dry/Wet Mix"));
+    wetMixHeader->addWidget(cvMixLabel);
+    QLabel *cvMixValue = new QLabel("50%");
+    wetMixHeader->addWidget(cvMixValue);
+    wetMixHeader->addStretch();
+    cvLayout->addLayout(wetMixHeader);
+
+    QSlider *cvMixSlider = new QSlider(Qt::Horizontal);
+    cvMixSlider->setRange(0, 100);
+    cvMixSlider->setValue(50);
+    connect(cvMixSlider, &QSlider::valueChanged, this, [cvMixValue](int v) {
+        cvMixValue->setText(QString::number(v) + "%");
+    });
+    cvLayout->addWidget(cvMixSlider);
+
+    m_blocks[3]->setContentWidget(convolverContent);
 
     setCentralWidget(centralWidget);
     m_blocks[0]->setExpanded(true);
