@@ -13,6 +13,7 @@
 #include <QShowEvent>
 #include <QTimer>
 #include <QApplication>
+#include <QPalette>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -67,8 +68,19 @@ void MainWindow::setupBlocks()
         tr("Preamplifier"),
         tr("Блок 3"),
         tr("Convolver"),
-        tr("Блок 5")
+        tr("Settings")
     };
+
+    QPalette pal = QApplication::palette();
+    pal.setColor(QPalette::Inactive, QPalette::Text, pal.color(QPalette::Active, QPalette::Text));
+    pal.setColor(QPalette::Inactive, QPalette::ButtonText, pal.color(QPalette::Active, QPalette::ButtonText));
+    pal.setColor(QPalette::Inactive, QPalette::HighlightedText, pal.color(QPalette::Active, QPalette::HighlightedText));
+    QApplication::setPalette(pal);
+
+    centralWidget->setStyleSheet(
+        "QComboBox { color: #e0e0e0; }"
+        "QComboBox QAbstractItemView { color: #e0e0e0; }"
+    );
 
     for (int i = 0; i < blockTitles.size(); ++i) {
         CollapsibleBlock *block = new CollapsibleBlock(blockTitles[i], centralWidget);
@@ -209,6 +221,29 @@ void MainWindow::setupBlocks()
     cvLayout->addWidget(cvMixSlider);
 
     m_blocks[3]->setContentWidget(convolverContent);
+
+    QWidget *settingsContent = new QWidget();
+    QVBoxLayout *stLayout = new QVBoxLayout(settingsContent);
+    stLayout->setContentsMargins(8, 4, 8, 4);
+    stLayout->setSpacing(4);
+
+    QLabel *outDevLabel = new QLabel(tr("Output device"));
+    stLayout->addWidget(outDevLabel);
+    QComboBox *outDevCombo = new QComboBox();
+    stLayout->addWidget(outDevCombo);
+
+    QLabel *bufSizeLabel = new QLabel(tr("Buffer size"));
+    stLayout->addWidget(bufSizeLabel);
+    QComboBox *bufSizeCombo = new QComboBox();
+    bufSizeCombo->addItem("64");
+    bufSizeCombo->addItem("128");
+    bufSizeCombo->addItem("256");
+    bufSizeCombo->addItem("512");
+    bufSizeCombo->addItem("1024");
+    bufSizeCombo->addItem("2048");
+    stLayout->addWidget(bufSizeCombo);
+
+    m_blocks[4]->setContentWidget(settingsContent);
 
     setCentralWidget(centralWidget);
     m_blocks[0]->setExpanded(true);
