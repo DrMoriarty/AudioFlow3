@@ -10,6 +10,7 @@ class MainWindow;
 QT_END_NAMESPACE
 
 class CollapsibleBlock;
+class QWidget;
 
 class MainWindow : public QMainWindow
 {
@@ -28,6 +29,7 @@ private:
 
     Ui::MainWindow *ui;
     QList<CollapsibleBlock *> m_blocks;
+    QWidget *m_eqContent = nullptr;
     bool m_initialized = false;
 };
 #endif // MAINWINDOW_H

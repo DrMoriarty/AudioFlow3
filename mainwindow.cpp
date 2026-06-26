@@ -5,11 +5,14 @@
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
+#include <QGridLayout>
 #include <QLabel>
 #include <QComboBox>
 #include <QPushButton>
 #include <QSlider>
 #include <QCheckBox>
+#include <QSpinBox>
+#include <QDoubleSpinBox>
 #include <QShowEvent>
 #include <QTimer>
 #include <QApplication>
@@ -49,8 +52,17 @@ void MainWindow::updateFixedHeight()
 
     centralWidget()->layout()->invalidate();
     QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
-    adjustSize();
-    setFixedSize(size());
+
+    m_eqContent->setMinimumHeight(m_eqContent->sizeHint().height());
+
+    QLayout *cl = centralWidget()->layout();
+    int totalH = cl->contentsMargins().top() + cl->contentsMargins().bottom();
+    for (auto *block : m_blocks) {
+        totalH += block->isExpanded() ? block->sizeHint().height() : block->minimumSizeHint().height();
+    }
+    totalH += cl->spacing() * (m_blocks.size() - 1);
+
+    setFixedHeight(totalH);
 }
 
 void MainWindow::setupBlocks()
@@ -66,7 +78,7 @@ void MainWindow::setupBlocks()
     QStringList blockTitles = {
         tr("Correcting"),
         tr("Preamplifier"),
-        tr("Блок 3"),
+        tr("Equalizer"),
         tr("Convolver"),
         tr("Settings")
     };
@@ -183,6 +195,98 @@ void MainWindow::setupBlocks()
     paLayout->addLayout(sliderLabelLayout);
 
     m_blocks[1]->setContentWidget(preampContent);
+
+    QWidget *equalizerContent = new QWidget();
+    m_eqContent = equalizerContent;
+    QVBoxLayout *eqLayout = new QVBoxLayout(equalizerContent);
+    eqLayout->setContentsMargins(8, 4, 8, 4);
+    eqLayout->setSpacing(4);
+
+    QLabel *presetLabel = new QLabel(tr("Preset"));
+    eqLayout->addWidget(presetLabel);
+    QComboBox *presetCombo = new QComboBox();
+    eqLayout->addWidget(presetCombo);
+
+    QLabel *parametersLabel = new QLabel(tr("Parameters"));
+    eqLayout->addWidget(parametersLabel);
+
+    QGridLayout *eqGrid = new QGridLayout();
+    eqGrid->setContentsMargins(0, 0, 0, 2);
+    eqGrid->setSpacing(2);
+
+    QLabel *hzLabel = new QLabel("Hz");
+    eqGrid->addWidget(hzLabel, 0, 0);
+
+    QWidget *eqScaleLabels = new QWidget();
+    QVBoxLayout *eqScaleLayout = new QVBoxLayout(eqScaleLabels);
+    eqScaleLayout->setContentsMargins(0, 0, 0, 0);
+    eqScaleLayout->setSpacing(0);
+
+    QLabel *eqPlusLabel = new QLabel("+30 dB");
+    eqPlusLabel->setAlignment(Qt::AlignCenter);
+    QLabel *eqZeroLabel = new QLabel("0 dB");
+    eqZeroLabel->setAlignment(Qt::AlignCenter);
+    QLabel *eqMinusLabel = new QLabel("-30 dB");
+    eqMinusLabel->setAlignment(Qt::AlignCenter);
+    eqScaleLayout->addWidget(eqPlusLabel, 0, Qt::AlignTop | Qt::AlignHCenter);
+    eqScaleLayout->addStretch(1);
+    eqScaleLayout->addWidget(eqZeroLabel, 0, Qt::AlignVCenter | Qt::AlignHCenter);
+    eqScaleLayout->addStretch(1);
+    eqScaleLayout->addWidget(eqMinusLabel, 0, Qt::AlignBottom | Qt::AlignHCenter);
+    eqGrid->addWidget(eqScaleLabels, 1, 0, Qt::AlignHCenter);
+
+    const int bandCount = 10;
+    QSpinBox *hzSpinBoxes[bandCount];
+    QSlider *eqSliders[bandCount];
+    QSpinBox *gainSpinboxes[bandCount];
+    QDoubleSpinBox *qSpinboxes[bandCount];
+
+    int defaultHz[] = {31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000};
+
+    for (int i = 0; i < bandCount; ++i) {
+        int col = i + 1;
+
+        hzSpinBoxes[i] = new QSpinBox();
+        hzSpinBoxes[i]->setButtonSymbols(QAbstractSpinBox::NoButtons);
+        hzSpinBoxes[i]->setAlignment(Qt::AlignCenter);
+        hzSpinBoxes[i]->setRange(10, 20000);
+        hzSpinBoxes[i]->setValue(defaultHz[i]);
+        eqGrid->addWidget(hzSpinBoxes[i], 0, col);
+
+        eqSliders[i] = new QSlider(Qt::Vertical);
+        eqSliders[i]->setRange(-30, 30);
+        eqSliders[i]->setValue(0);
+        eqSliders[i]->setFixedHeight(200);
+        eqGrid->addWidget(eqSliders[i], 1, col, Qt::AlignHCenter);
+
+        gainSpinboxes[i] = new QSpinBox();
+        gainSpinboxes[i]->setButtonSymbols(QAbstractSpinBox::NoButtons);
+        gainSpinboxes[i]->setAlignment(Qt::AlignCenter);
+        gainSpinboxes[i]->setRange(-30, 30);
+        gainSpinboxes[i]->setValue(0);
+        eqGrid->addWidget(gainSpinboxes[i], 2, col);
+
+        connect(eqSliders[i], &QSlider::valueChanged, gainSpinboxes[i], &QSpinBox::setValue);
+        connect(gainSpinboxes[i], QOverload<int>::of(&QSpinBox::valueChanged), eqSliders[i], &QSlider::setValue);
+
+        qSpinboxes[i] = new QDoubleSpinBox();
+        qSpinboxes[i]->setButtonSymbols(QAbstractSpinBox::NoButtons);
+        qSpinboxes[i]->setAlignment(Qt::AlignCenter);
+        qSpinboxes[i]->setRange(0.1, 15.0);
+        qSpinboxes[i]->setValue(1.0);
+        qSpinboxes[i]->setSingleStep(0.1);
+        eqGrid->addWidget(qSpinboxes[i], 3, col);
+    }
+
+    QLabel *gainLabel2 = new QLabel("Gain");
+    eqGrid->addWidget(gainLabel2, 2, 0);
+
+    QLabel *qLabel = new QLabel("Q value");
+    eqGrid->addWidget(qLabel, 3, 0);
+
+    eqLayout->addLayout(eqGrid);
+
+    m_blocks[2]->setContentWidget(equalizerContent);
 
     QWidget *convolverContent = new QWidget();
     QVBoxLayout *cvLayout = new QVBoxLayout(convolverContent);
