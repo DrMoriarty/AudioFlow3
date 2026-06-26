@@ -7,6 +7,7 @@ class QPushButton;
 class QLabel;
 class QVBoxLayout;
 class QWidget;
+class ToggleSwitch;
 
 class CollapsibleBlock : public QFrame
 {
@@ -20,6 +21,7 @@ public:
     bool isExpanded() const;
     QWidget *headerWidget() const;
     QWidget *contentWidget() const;
+    void addToggleSwitch();
 
 signals:
     void expandedChanged();
@@ -35,6 +37,7 @@ private:
     QWidget *m_headerWidget;
     QWidget *m_contentWidget;
     QVBoxLayout *m_mainLayout;
+    ToggleSwitch *m_toggleSwitch = nullptr;
     bool m_expanded;
 };
 

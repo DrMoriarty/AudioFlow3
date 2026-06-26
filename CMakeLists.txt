@@ -15,6 +15,8 @@ qt_add_executable(AudioFlow3
     collapsibleblock.h
     knobwidget.cpp
     knobwidget.h
+    toggleswitch.cpp
+    toggleswitch.h
     AudioFlow3.qrc
 )
 

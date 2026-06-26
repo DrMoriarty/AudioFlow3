@@ -99,6 +99,8 @@ void MainWindow::setupBlocks()
         connect(block, &CollapsibleBlock::expandedChanged, this, &MainWindow::updateFixedHeight);
         mainLayout->addWidget(block);
         m_blocks.append(block);
+        if (i < 4)
+            block->addToggleSwitch();
     }
 
     QWidget *correctingContent = new QWidget();

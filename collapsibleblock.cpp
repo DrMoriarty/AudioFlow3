@@ -1,4 +1,5 @@
 #include "collapsibleblock.h"
+#include "toggleswitch.h"
 
 #include <QPushButton>
 #include <QLabel>
@@ -63,6 +64,7 @@ CollapsibleBlock::CollapsibleBlock(const QString &title, QWidget *parent)
     headerLayout->addStretch();
 
     QWidget *spacer = new QWidget(headerWidget);
+    spacer->setObjectName("headerRightSpacer");
     spacer->setFixedSize(20, 20);
     headerLayout->addWidget(spacer);
 
@@ -130,4 +132,18 @@ QWidget *CollapsibleBlock::headerWidget() const
 QWidget *CollapsibleBlock::contentWidget() const
 {
     return m_contentWidget;
+}
+
+void CollapsibleBlock::addToggleSwitch()
+{
+    QWidget *spacer = m_headerWidget->findChild<QWidget *>("headerRightSpacer");
+    QLayout *headerLayout = m_headerWidget->layout();
+    if (spacer) {
+        headerLayout->removeWidget(spacer);
+        spacer->deleteLater();
+    }
+
+    m_toggleSwitch = new ToggleSwitch(m_headerWidget);
+    m_toggleSwitch->setChecked(true);
+    static_cast<QBoxLayout *>(headerLayout)->addWidget(m_toggleSwitch, 0, Qt::AlignVCenter);
 }
