@@ -86,3 +86,5 @@ CMakeLists.txt.user*
 .qt
 AudioFlow3_autogen
 CMakeFiles
+CMakeCache.txt
+cmake_install.cmake

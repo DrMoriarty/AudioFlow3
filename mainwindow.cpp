@@ -9,6 +9,7 @@
 #include <QComboBox>
 #include <QPushButton>
 #include <QSlider>
+#include <QCheckBox>
 #include <QShowEvent>
 #include <QTimer>
 #include <QApplication>
@@ -63,7 +64,7 @@ void MainWindow::setupBlocks()
 
     QStringList blockTitles = {
         tr("Correcting"),
-        tr("Блок 2"),
+        tr("Preamplifier"),
         tr("Блок 3"),
         tr("Блок 4"),
         tr("Блок 5")
@@ -131,6 +132,46 @@ void MainWindow::setupBlocks()
     ccLayout->addLayout(mixKnobLayout);
 
     m_blocks[0]->setContentWidget(correctingContent);
+
+    QWidget *preampContent = new QWidget();
+    QVBoxLayout *paLayout = new QVBoxLayout(preampContent);
+    paLayout->setContentsMargins(8, 4, 8, 4);
+    paLayout->setSpacing(4);
+
+    QHBoxLayout *gainRowLayout = new QHBoxLayout();
+    gainRowLayout->setContentsMargins(0, 0, 0, 0);
+    gainRowLayout->setSpacing(8);
+    QLabel *paGainLabel = new QLabel(tr("Gain"));
+    gainRowLayout->addWidget(paGainLabel);
+    QLabel *gainValueLabel = new QLabel("+0 dB");
+    gainRowLayout->addWidget(gainValueLabel);
+    gainRowLayout->addStretch();
+    QCheckBox *autoSwitch = new QCheckBox(tr("Auto"));
+    gainRowLayout->addWidget(autoSwitch);
+    paLayout->addLayout(gainRowLayout);
+
+    QSlider *gainSlider = new QSlider(Qt::Horizontal);
+    gainSlider->setRange(-30, 30);
+    gainSlider->setValue(0);
+    connect(gainSlider, &QSlider::valueChanged, this, [gainValueLabel](int v) {
+        gainValueLabel->setText(QString("%1%2 dB").arg(v >= 0 ? "+" : "").arg(v));
+    });
+    paLayout->addWidget(gainSlider);
+
+    QHBoxLayout *sliderLabelLayout = new QHBoxLayout();
+    sliderLabelLayout->setContentsMargins(0, 0, 0, 0);
+    QLabel *minLabel = new QLabel(tr("-30 dB"));
+    sliderLabelLayout->addWidget(minLabel);
+    sliderLabelLayout->addStretch();
+    QLabel *zeroLabel = new QLabel(tr("0 dB"));
+    sliderLabelLayout->addWidget(zeroLabel);
+    sliderLabelLayout->addStretch();
+    QLabel *maxLabel = new QLabel(tr("+30 dB"));
+    sliderLabelLayout->addWidget(maxLabel);
+    paLayout->addLayout(sliderLabelLayout);
+
+    m_blocks[1]->setContentWidget(preampContent);
+
     setCentralWidget(centralWidget);
     m_blocks[0]->setExpanded(true);
 }
