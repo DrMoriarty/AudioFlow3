@@ -1,13 +1,18 @@
 #include "mainwindow.h"
+#include "src/audioflow.h"
+#include "src/fileutils/config.h"
 
 #include <QApplication>
 #include <QLocale>
 #include <QTranslator>
+#include <QStandardPaths>
+#include <QDir>
 
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
     QApplication::setStyle("Fusion");
+    QApplication::setApplicationName("AudioFlow3");
 
     QTranslator translator;
     const QStringList uiLanguages = QLocale::system().uiLanguages();
@@ -18,7 +23,16 @@ int main(int argc, char *argv[])
             break;
         }
     }
-    MainWindow w;
+
+    QString configPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    QDir().mkpath(configPath);
+    QString configFile = configPath + "/config.json";
+
+    initialize(configFile.toStdString());
+
+    QObject::connect(&a, &QCoreApplication::aboutToQuit, []() { cleanup(); });
+
+    MainWindow w(getConfig());
     w.show();
     return QApplication::exec();
 }

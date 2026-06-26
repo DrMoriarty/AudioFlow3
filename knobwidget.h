@@ -15,6 +15,7 @@ public:
 
     QString currentValue() const;
     int currentIndex() const;
+    void setCurrentIndex(int index);
 
 signals:
     void valueChanged(const QString &value);

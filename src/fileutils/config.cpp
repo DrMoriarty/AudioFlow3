@@ -23,8 +23,15 @@ Config::Config(const std::string& configPath) : configFilePath(configPath) {
     correctionToggle = false;
     correctionIRFilePath = "";
     correctionPostGain = 0.0f;
+    correctionRecent = {};
 
     bufferSize = 4096;
+
+    uiExpandedCorrecting = false;
+    uiExpandedPreamplifier = false;
+    uiExpandedEqualizer = false;
+    uiExpandedReverb = false;
+    uiExpandedSettings = false;
 
     loadConfig();
 }
@@ -55,10 +62,17 @@ bool Config::loadConfig() {
     float correctionDryWet = data.contains("correction") && data["correction"].contains("dw") ? data["correction"]["dw"].get<float>() : 1.0f;
     std::string correctionIRFilePath = data.contains("correction") && data["correction"].contains("ir") ? data["correction"]["ir"].get<std::string>() : "";
     float correctionPostGain = data.contains("correction") && data["correction"].contains("postGain") ? data["correction"]["postGain"].get<float>() : 0.0f;
+    std::vector<std::string> correctionRecent = data.contains("correction") && data["correction"].contains("recent") ? data["correction"]["recent"].get<std::vector<std::string>>() : std::vector<std::string>{};
 
     int bufferSize = data.contains("bufferSize") ? data["bufferSize"].get<int>() : 4096;
 
-    if (ampToggle != this->ampToggle || ampGain != this->ampGain || equalizerToggle != this->equalizerToggle || equalizerF != this->equalizerF || equalizerQ != this->equalizerQ || equalizerG != this->equalizerG || reverbToggle != this->reverbToggle || reverbDryWet != this->reverbDryWet || irFilePath != this->irFilePath || correctionToggle != this->correctionToggle || correctionDryWet != this->correctionDryWet || correctionIRFilePath != this->correctionIRFilePath || correctionPostGain != this->correctionPostGain || bufferSize != this->bufferSize) {
+    bool uiExpandedCorrecting = data.contains("ui") && data["ui"].contains("expanded") && data["ui"]["expanded"].contains("correcting") ? data["ui"]["expanded"]["correcting"].get<bool>() : false;
+    bool uiExpandedPreamplifier = data.contains("ui") && data["ui"].contains("expanded") && data["ui"]["expanded"].contains("preamplifier") ? data["ui"]["expanded"]["preamplifier"].get<bool>() : false;
+    bool uiExpandedEqualizer = data.contains("ui") && data["ui"].contains("expanded") && data["ui"]["expanded"].contains("equalizer") ? data["ui"]["expanded"]["equalizer"].get<bool>() : false;
+    bool uiExpandedReverb = data.contains("ui") && data["ui"].contains("expanded") && data["ui"]["expanded"].contains("reverb") ? data["ui"]["expanded"]["reverb"].get<bool>() : false;
+    bool uiExpandedSettings = data.contains("ui") && data["ui"].contains("expanded") && data["ui"]["expanded"].contains("settings") ? data["ui"]["expanded"]["settings"].get<bool>() : false;
+
+    if (ampToggle != this->ampToggle || ampGain != this->ampGain || equalizerToggle != this->equalizerToggle || equalizerF != this->equalizerF || equalizerQ != this->equalizerQ || equalizerG != this->equalizerG || reverbToggle != this->reverbToggle || reverbDryWet != this->reverbDryWet || irFilePath != this->irFilePath || correctionToggle != this->correctionToggle || correctionDryWet != this->correctionDryWet || correctionIRFilePath != this->correctionIRFilePath || correctionPostGain != this->correctionPostGain || bufferSize != this->bufferSize || uiExpandedCorrecting != this->uiExpandedCorrecting || uiExpandedPreamplifier != this->uiExpandedPreamplifier || uiExpandedEqualizer != this->uiExpandedEqualizer || uiExpandedReverb != this->uiExpandedReverb || uiExpandedSettings != this->uiExpandedSettings || correctionRecent != this->correctionRecent) {
         this->ampToggle = ampToggle;
         this->ampGain = ampGain;
 
@@ -75,8 +89,15 @@ bool Config::loadConfig() {
         this->correctionDryWet = correctionDryWet;
         this->correctionIRFilePath = correctionIRFilePath;
         this->correctionPostGain = correctionPostGain;
+        this->correctionRecent = correctionRecent;
 
         this->bufferSize = bufferSize;
+
+        this->uiExpandedCorrecting = uiExpandedCorrecting;
+        this->uiExpandedPreamplifier = uiExpandedPreamplifier;
+        this->uiExpandedEqualizer = uiExpandedEqualizer;
+        this->uiExpandedReverb = uiExpandedReverb;
+        this->uiExpandedSettings = uiExpandedSettings;
 
         return false;
     }

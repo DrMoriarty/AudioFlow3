@@ -11,7 +11,7 @@
 CollapsibleBlock::CollapsibleBlock(const QString &title, QWidget *parent)
     : QFrame(parent), m_expanded(false)
 {
-    setFrameShape(QFrame::StyledPanel);
+    setFrameShape(QFrame::NoFrame);
     setStyleSheet(
         "CollapsibleBlock {"
         "  border: 2px solid #606468;"
@@ -82,9 +82,10 @@ CollapsibleBlock::CollapsibleBlock(const QString &title, QWidget *parent)
     );
     m_mainLayout->addWidget(m_contentWidget);
 
-    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
     headerWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    m_headerHeight = headerWidget->sizeHint().height() + 4; // +4 for QFrame border
 }
 
 void CollapsibleBlock::setContentWidget(QWidget *widget)
@@ -134,6 +135,11 @@ QWidget *CollapsibleBlock::contentWidget() const
     return m_contentWidget;
 }
 
+int CollapsibleBlock::headerHeight() const
+{
+    return m_headerHeight;
+}
+
 void CollapsibleBlock::addToggleSwitch()
 {
     QWidget *spacer = m_headerWidget->findChild<QWidget *>("headerRightSpacer");
@@ -146,4 +152,10 @@ void CollapsibleBlock::addToggleSwitch()
     m_toggleSwitch = new ToggleSwitch(m_headerWidget);
     m_toggleSwitch->setChecked(true);
     static_cast<QBoxLayout *>(headerLayout)->addWidget(m_toggleSwitch, 0, Qt::AlignVCenter);
+}
+
+void CollapsibleBlock::setToggleChecked(bool checked)
+{
+    if (m_toggleSwitch)
+        m_toggleSwitch->setChecked(checked);
 }

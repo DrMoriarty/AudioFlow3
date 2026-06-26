@@ -1,8 +1,12 @@
 #ifndef AUDIO_FLOW_H
 #define AUDIO_FLOW_H
 
+#include "./fileutils/config.h"
+
 bool initialize(const std::string& configPath);
 void cleanup();
+
+const Config& getConfig();
 
 std::string getCurrentOutputDeviceName();
 std::vector<std::string> getAvailableOutputDevices();

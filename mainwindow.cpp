@@ -2,6 +2,8 @@
 #include "ui_mainwindow.h"
 #include "collapsibleblock.h"
 #include "knobwidget.h"
+#include "src/fileutils/config.h"
+#include "src/audioflow.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -14,13 +16,16 @@
 #include <QSpinBox>
 #include <QDoubleSpinBox>
 #include <QShowEvent>
+#include <QFileInfo>
+#include <cmath>
 #include <QTimer>
 #include <QApplication>
 #include <QPalette>
 
-MainWindow::MainWindow(QWidget *parent)
+MainWindow::MainWindow(const Config &config, QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
+    , m_config(config)
 {
     ui->setupUi(this);
     setupBlocks();
@@ -36,33 +41,46 @@ void MainWindow::showEvent(QShowEvent *event)
     QMainWindow::showEvent(event);
     if (!m_initialized) {
         m_initialized = true;
+
+        QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+
+        for (int i = 0; i < m_blocks.size(); ++i) {
+            if (i == 2 && m_eqContentHeight > 0)
+                m_expandedHeights[i] = m_blocks[i]->headerHeight() + m_eqContentHeight;
+            else
+                m_expandedHeights[i] = m_blocks[i]->headerHeight() + m_blocks[i]->contentWidget()->sizeHint().height();
+        }
+
         updateFixedHeight();
     }
 }
 
 void MainWindow::updateFixedHeight()
 {
-    setMinimumHeight(0);
-    setMaximumHeight(QWIDGETSIZE_MAX);
-
-    for (auto *block : m_blocks) {
-        block->setMinimumHeight(0);
-        block->setMaximumHeight(QWIDGETSIZE_MAX);
-    }
-
-    centralWidget()->layout()->invalidate();
-    QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
-
-    m_eqContent->setMinimumHeight(m_eqContent->sizeHint().height());
-
     QLayout *cl = centralWidget()->layout();
     int totalH = cl->contentsMargins().top() + cl->contentsMargins().bottom();
-    for (auto *block : m_blocks) {
-        totalH += block->isExpanded() ? block->sizeHint().height() : block->minimumSizeHint().height();
+    for (int i = 0; i < m_blocks.size(); ++i) {
+        CollapsibleBlock *block = m_blocks[i];
+        int blockH;
+        if (block == m_blocks[2] && block->isExpanded() && m_eqContentHeight > 0)
+            blockH = m_blocks[2]->headerHeight() + m_eqContentHeight;
+        else if (block->isExpanded() && m_expandedHeights[i] > 0)
+            blockH = m_expandedHeights[i];
+        else if (block->isExpanded())
+            blockH = m_blockCollapsedHeight + 100;
+        else
+            blockH = m_blockCollapsedHeight;
+        block->setFixedHeight(blockH);
+        totalH += blockH;
     }
     totalH += cl->spacing() * (m_blocks.size() - 1);
 
-    setFixedHeight(totalH);
+    if (m_titleBarHeight <= 0)
+        m_titleBarHeight = frameGeometry().height() - geometry().height();
+    if (m_titleBarHeight <= 0)
+        m_titleBarHeight = 28;
+
+    setFixedSize(600, totalH + m_titleBarHeight);
 }
 
 void MainWindow::setupBlocks()
@@ -73,7 +91,7 @@ void MainWindow::setupBlocks()
     QWidget *centralWidget = new QWidget(this);
     QVBoxLayout *mainLayout = new QVBoxLayout(centralWidget);
     mainLayout->setContentsMargins(2, 2, 2, 2);
-    mainLayout->setSpacing(5);
+    mainLayout->setSpacing(1);
 
     QStringList blockTitles = {
         tr("Correcting"),
@@ -102,6 +120,12 @@ void MainWindow::setupBlocks()
         if (i < 4)
             block->addToggleSwitch();
     }
+    m_blocks[0]->setToggleChecked(m_config.correctionToggle);
+    m_blocks[1]->setToggleChecked(m_config.ampToggle);
+    m_blocks[2]->setToggleChecked(m_config.equalizerToggle);
+    m_blocks[3]->setToggleChecked(m_config.reverbToggle);
+    m_blockCollapsedHeight = m_blocks[0]->headerHeight();
+    m_expandedHeights.resize(m_blocks.size(), -1);
 
     QWidget *correctingContent = new QWidget();
     QVBoxLayout *ccLayout = new QVBoxLayout(correctingContent);
@@ -114,7 +138,16 @@ void MainWindow::setupBlocks()
 
     QHBoxLayout *irLayout = new QHBoxLayout();
     QComboBox *irCombo = new QComboBox();
-    irCombo->addItem(tr("Flat"));
+    QString corrIRName = QFileInfo(QString::fromStdString(m_config.correctionIRFilePath)).fileName();
+    int corrComboIndex = -1;
+    for (const auto &path : m_config.correctionRecent) {
+        QString fname = QFileInfo(QString::fromStdString(path)).fileName();
+        irCombo->addItem(fname, QString::fromStdString(path));
+        if (fname == corrIRName)
+            corrComboIndex = irCombo->count() - 1;
+    }
+    if (corrComboIndex >= 0)
+        irCombo->setCurrentIndex(corrComboIndex);
     irLayout->addWidget(irCombo, 1);
     QPushButton *loadIrBtn = new QPushButton(tr("Load IR"));
     irLayout->addWidget(loadIrBtn);
@@ -134,10 +167,11 @@ void MainWindow::setupBlocks()
     sliderColumn->addLayout(mixHeaderLayout);
     QSlider *mixSlider = new QSlider(Qt::Horizontal);
     mixSlider->setRange(0, 100);
-    mixSlider->setValue(50);
+    mixSlider->setValue(static_cast<int>(m_config.correctionDryWet * 100));
     connect(mixSlider, &QSlider::valueChanged, this, [mixValueLabel](int v) {
         mixValueLabel->setText(QString::number(v) + "%");
     });
+    mixValueLabel->setText(QString::number(mixSlider->value()) + "%");
     sliderColumn->addWidget(mixSlider);
 
     QHBoxLayout *mixKnobLayout = new QHBoxLayout();
@@ -153,6 +187,14 @@ void MainWindow::setupBlocks()
     gainLabel->setAlignment(Qt::AlignCenter);
     knobLayout->addWidget(gainLabel);
     KnobWidget *gainKnob = new KnobWidget({"0 dB", "3 dB", "6 dB", "9 dB", "12 dB"});
+    float bestDist = 1000.0f;
+    int bestIdx = 0;
+    const float knobValues[] = {0.0f, 3.0f, 6.0f, 9.0f, 12.0f};
+    for (int k = 0; k < 5; ++k) {
+        float dist = fabsf(m_config.correctionPostGain - knobValues[k]);
+        if (dist < bestDist) { bestDist = dist; bestIdx = k; }
+    }
+    gainKnob->setCurrentIndex(bestIdx);
     knobLayout->addWidget(gainKnob);
     mixKnobLayout->addLayout(knobLayout);
     ccLayout->addLayout(mixKnobLayout);
@@ -178,10 +220,11 @@ void MainWindow::setupBlocks()
 
     QSlider *gainSlider = new QSlider(Qt::Horizontal);
     gainSlider->setRange(-30, 30);
-    gainSlider->setValue(0);
+    gainSlider->setValue(static_cast<int>(m_config.ampGain));
     connect(gainSlider, &QSlider::valueChanged, this, [gainValueLabel](int v) {
         gainValueLabel->setText(QString("%1%2 dB").arg(v >= 0 ? "+" : "").arg(v));
     });
+    gainValueLabel->setText(QString("%1%2 dB").arg(gainSlider->value() >= 0 ? "+" : "").arg(gainSlider->value()));
     paLayout->addWidget(gainSlider);
 
     QHBoxLayout *sliderLabelLayout = new QHBoxLayout();
@@ -252,12 +295,12 @@ void MainWindow::setupBlocks()
         hzSpinBoxes[i]->setButtonSymbols(QAbstractSpinBox::NoButtons);
         hzSpinBoxes[i]->setAlignment(Qt::AlignCenter);
         hzSpinBoxes[i]->setRange(10, 20000);
-        hzSpinBoxes[i]->setValue(defaultHz[i]);
+        hzSpinBoxes[i]->setValue(i < m_config.equalizerF.size() ? static_cast<int>(m_config.equalizerF[i]) : defaultHz[i]);
         eqGrid->addWidget(hzSpinBoxes[i], 0, col);
 
         eqSliders[i] = new QSlider(Qt::Vertical);
         eqSliders[i]->setRange(-30, 30);
-        eqSliders[i]->setValue(0);
+        eqSliders[i]->setValue(i < m_config.equalizerG.size() ? static_cast<int>(m_config.equalizerG[i]) : 0);
         eqSliders[i]->setFixedHeight(200);
         eqGrid->addWidget(eqSliders[i], 1, col, Qt::AlignHCenter);
 
@@ -265,7 +308,7 @@ void MainWindow::setupBlocks()
         gainSpinboxes[i]->setButtonSymbols(QAbstractSpinBox::NoButtons);
         gainSpinboxes[i]->setAlignment(Qt::AlignCenter);
         gainSpinboxes[i]->setRange(-30, 30);
-        gainSpinboxes[i]->setValue(0);
+        gainSpinboxes[i]->setValue(i < m_config.equalizerG.size() ? static_cast<int>(m_config.equalizerG[i]) : 0);
         eqGrid->addWidget(gainSpinboxes[i], 2, col);
 
         connect(eqSliders[i], &QSlider::valueChanged, gainSpinboxes[i], &QSpinBox::setValue);
@@ -275,7 +318,7 @@ void MainWindow::setupBlocks()
         qSpinboxes[i]->setButtonSymbols(QAbstractSpinBox::NoButtons);
         qSpinboxes[i]->setAlignment(Qt::AlignCenter);
         qSpinboxes[i]->setRange(0.1, 15.0);
-        qSpinboxes[i]->setValue(1.0);
+        qSpinboxes[i]->setValue(i < m_config.equalizerQ.size() ? static_cast<double>(m_config.equalizerQ[i]) : 1.0);
         qSpinboxes[i]->setSingleStep(0.1);
         eqGrid->addWidget(qSpinboxes[i], 3, col);
     }
@@ -287,6 +330,19 @@ void MainWindow::setupBlocks()
     eqGrid->addWidget(qLabel, 3, 0);
 
     eqLayout->addLayout(eqGrid);
+
+    int eqContentH = eqLayout->contentsMargins().top() + eqLayout->contentsMargins().bottom();
+    eqContentH += presetLabel->sizeHint().height() + presetCombo->sizeHint().height();
+    eqContentH += parametersLabel->sizeHint().height();
+    eqContentH += eqLayout->spacing() * 3;
+    int sliderH = 200; // fixed slider height
+    int spinH = hzSpinBoxes[0]->sizeHint().height();
+    int gainH = gainSpinboxes[0]->sizeHint().height();
+    int qH = qSpinboxes[0]->sizeHint().height();
+    eqContentH += spinH + eqGrid->spacing() + sliderH + eqGrid->spacing() + gainH + eqGrid->spacing() + qH;
+    eqContentH += eqGrid->contentsMargins().top() + eqGrid->contentsMargins().bottom();
+    equalizerContent->setMinimumHeight(eqContentH);
+    m_eqContentHeight = eqContentH;
 
     m_blocks[2]->setContentWidget(equalizerContent);
 
@@ -302,7 +358,12 @@ void MainWindow::setupBlocks()
     spaceRowLayout->setContentsMargins(0, 0, 0, 0);
     spaceRowLayout->setSpacing(8);
     QComboBox *spaceCombo = new QComboBox();
-    spaceCombo->addItem(tr("Flat"));
+    if (!m_config.irFilePath.empty()) {
+        spaceCombo->addItem(QFileInfo(QString::fromStdString(m_config.irFilePath)).fileName(),
+                             QString::fromStdString(m_config.irFilePath));
+    } else {
+        spaceCombo->addItem(tr("Flat"));
+    }
     spaceRowLayout->addWidget(spaceCombo, 1);
     QPushButton *customBtn = new QPushButton(tr("Custom"));
     spaceRowLayout->addWidget(customBtn);
@@ -320,10 +381,11 @@ void MainWindow::setupBlocks()
 
     QSlider *cvMixSlider = new QSlider(Qt::Horizontal);
     cvMixSlider->setRange(0, 100);
-    cvMixSlider->setValue(50);
+    cvMixSlider->setValue(static_cast<int>(m_config.reverbDryWet * 100));
     connect(cvMixSlider, &QSlider::valueChanged, this, [cvMixValue](int v) {
         cvMixValue->setText(QString::number(v) + "%");
     });
+    cvMixValue->setText(QString::number(cvMixSlider->value()) + "%");
     cvLayout->addWidget(cvMixSlider);
 
     m_blocks[3]->setContentWidget(convolverContent);
@@ -336,21 +398,35 @@ void MainWindow::setupBlocks()
     QLabel *outDevLabel = new QLabel(tr("Output device"));
     stLayout->addWidget(outDevLabel);
     QComboBox *outDevCombo = new QComboBox();
+    QStringList outDevNames;
+    for (const auto &name : getAvailableOutputDevices())
+        outDevNames.append(QString::fromStdString(name));
+    outDevCombo->addItems(outDevNames);
+    int outDevIdx = outDevNames.indexOf(QString::fromStdString(getCurrentOutputDeviceName()));
+    if (outDevIdx >= 0)
+        outDevCombo->setCurrentIndex(outDevIdx);
     stLayout->addWidget(outDevCombo);
 
     QLabel *bufSizeLabel = new QLabel(tr("Buffer size"));
     stLayout->addWidget(bufSizeLabel);
     QComboBox *bufSizeCombo = new QComboBox();
-    bufSizeCombo->addItem("64");
-    bufSizeCombo->addItem("128");
-    bufSizeCombo->addItem("256");
-    bufSizeCombo->addItem("512");
-    bufSizeCombo->addItem("1024");
-    bufSizeCombo->addItem("2048");
+    const int bufSizes[] = {64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384};
+    int bufIdx = -1;
+    for (int bs : bufSizes) {
+        bufSizeCombo->addItem(QString::number(bs), bs);
+        if (bs == m_config.bufferSize)
+            bufIdx = bufSizeCombo->count() - 1;
+    }
+    if (bufIdx >= 0)
+        bufSizeCombo->setCurrentIndex(bufIdx);
     stLayout->addWidget(bufSizeCombo);
 
     m_blocks[4]->setContentWidget(settingsContent);
 
     setCentralWidget(centralWidget);
-    m_blocks[0]->setExpanded(true);
+    m_blocks[0]->setExpanded(m_config.uiExpandedCorrecting);
+    m_blocks[1]->setExpanded(m_config.uiExpandedPreamplifier);
+    m_blocks[2]->setExpanded(m_config.uiExpandedEqualizer);
+    m_blocks[3]->setExpanded(m_config.uiExpandedReverb);
+    m_blocks[4]->setExpanded(m_config.uiExpandedSettings);
 }

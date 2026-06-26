@@ -36,6 +36,15 @@ int KnobWidget::currentIndex() const
     return m_index;
 }
 
+void KnobWidget::setCurrentIndex(int index)
+{
+    if (index >= 0 && index < m_values.size()) {
+        m_index = index;
+        updateLabel();
+        update();
+    }
+}
+
 void KnobWidget::paintEvent(QPaintEvent *event)
 {
     Q_UNUSED(event);

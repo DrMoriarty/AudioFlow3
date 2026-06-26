@@ -21,7 +21,9 @@ public:
     bool isExpanded() const;
     QWidget *headerWidget() const;
     QWidget *contentWidget() const;
+    int headerHeight() const;
     void addToggleSwitch();
+    void setToggleChecked(bool checked);
 
 signals:
     void expandedChanged();
@@ -39,6 +41,7 @@ private:
     QVBoxLayout *m_mainLayout;
     ToggleSwitch *m_toggleSwitch = nullptr;
     bool m_expanded;
+    int m_headerHeight = 0;
 };
 
 #endif // COLLAPSIBLEBLOCK_H

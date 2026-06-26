@@ -301,6 +301,10 @@ OSStatus defaultDeviceIOProc(
         void* inClientData
 );
 
+const Config& getConfig() {
+    return *gConfig;
+}
+
 std::string getCurrentOutputDeviceName() {
     AudioObjectPropertyAddress propAddress;
     propAddress.mSelector = kAudioObjectPropertyName;
@@ -398,7 +402,6 @@ bool setOutputDevice(const std::string& name) {
         deviceSampleRate = 48000.0f;
     }
 
-    gConfig->loadConfig();
     auto updated = std::make_unique<Processing>(*gConfig, getAudioDeviceVolume(driverID), deviceSampleRate);
     audioProcessorMutex.lock();
     audioProcessor = std::move(updated);

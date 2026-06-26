@@ -32,8 +32,15 @@ public:
     float correctionDryWet;
     std::string correctionIRFilePath;
     float correctionPostGain;
+    std::vector<std::string> correctionRecent;
 
     int bufferSize;
+
+    bool uiExpandedCorrecting;
+    bool uiExpandedPreamplifier;
+    bool uiExpandedEqualizer;
+    bool uiExpandedReverb;
+    bool uiExpandedSettings;
 };
 
 
