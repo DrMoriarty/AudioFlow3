@@ -17,8 +17,9 @@ qt_add_executable(AudioFlow3
     knobwidget.h
     toggleswitch.cpp
     toggleswitch.h
-    src/audioflow.cpp
-    src/audioflow.h
+        src/audioflow.cpp
+        src/audioflow.h
+        src/permission.mm
     src/processing.cpp
     src/processing.h
     src/fileutils/globals.cpp
@@ -42,6 +43,11 @@ qt_add_executable(AudioFlow3
     AudioFlow3.qrc
 )
 
+set_target_properties(AudioFlow3 PROPERTIES
+    MACOSX_BUNDLE_INFO_FILE ${CMAKE_SOURCE_DIR}/Info.plist
+    XCODE_ATTRIBUTE_CODE_SIGN_ENTITLEMENTS ${CMAKE_SOURCE_DIR}/AudioFlow3.entitlements
+)
+
 qt_add_translations(
     TARGETS AudioFlow3
     TS_FILES AudioFlow3_en_001.ts
@@ -49,6 +55,8 @@ qt_add_translations(
 
 find_library(COREAUDIO_LIB CoreAudio)
 find_library(ACCELERATE_LIB Accelerate)
+find_library(AVFOUNDATION_LIB AVFoundation)
+find_library(FOUNDATION_LIB Foundation)
 
 target_link_libraries(AudioFlow3
     PRIVATE
@@ -56,12 +64,21 @@ target_link_libraries(AudioFlow3
         Qt::Widgets
         ${COREAUDIO_LIB}
         ${ACCELERATE_LIB}
+        ${AVFOUNDATION_LIB}
+        ${FOUNDATION_LIB}
 )
 
 install(TARGETS AudioFlow3
     BUNDLE  DESTINATION .
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+
+add_custom_command(TARGET AudioFlow3 POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+        ${CMAKE_SOURCE_DIR}/Info.plist
+        $<TARGET_BUNDLE_CONTENT_DIR:AudioFlow3>/Info.plist
+    COMMENT "Copying custom Info.plist to app bundle"
 )
 
 add_custom_command(TARGET AudioFlow3 POST_BUILD

@@ -24,4 +24,10 @@ void setAmplifierGain(float gain);
 void setEqualizerBand(int index, float f, float q, float g);
 void setBufferSize(int newBufSize);
 
+void setUIExpandedCorrecting(bool expanded);
+void setUIExpandedPreamplifier(bool expanded);
+void setUIExpandedEqualizer(bool expanded);
+void setUIExpandedReverb(bool expanded);
+void setUIExpandedSettings(bool expanded);
+
 #endif //AUDIO_FLOW_H

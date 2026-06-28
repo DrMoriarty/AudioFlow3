@@ -121,6 +121,19 @@ void MainWindow::setupBlocks()
     for (int i = 0; i < blockTitles.size(); ++i) {
         CollapsibleBlock *block = new CollapsibleBlock(blockTitles[i], centralWidget);
         connect(block, &CollapsibleBlock::expandedChanged, this, &MainWindow::updateFixedHeight);
+        connect(block, &CollapsibleBlock::expandedChanged, this, [block, this]() {
+            bool isExpanded = block->isExpanded();
+            int index = m_blocks.indexOf(block);
+            if (index >= 0) {
+                switch (index) {
+                    case 0: setUIExpandedCorrecting(isExpanded); break;
+                    case 1: setUIExpandedPreamplifier(isExpanded); break;
+                    case 2: setUIExpandedEqualizer(isExpanded); break;
+                    case 3: setUIExpandedReverb(isExpanded); break;
+                    case 4: setUIExpandedSettings(isExpanded); break;
+                }
+            }
+        });
         mainLayout->addWidget(block);
         m_blocks.append(block);
         if (i < 4)

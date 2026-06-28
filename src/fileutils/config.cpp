@@ -104,3 +104,49 @@ bool Config::loadConfig() {
 
     return true;
 }
+
+bool Config::saveConfig() {
+    json data = {
+        {"amplifier", {
+            {"toggle", ampToggle},
+            {"g", ampGain}
+        }},
+        {"equalizer", {
+            {"toggle", equalizerToggle},
+            {"f", equalizerF},
+            {"q", equalizerQ},
+            {"g", equalizerG}
+        }},
+        {"reverb", {
+            {"toggle", reverbToggle},
+            {"dw", reverbDryWet},
+            {"ir", irFilePath}
+        }},
+        {"correction", {
+            {"toggle", correctionToggle},
+            {"dw", correctionDryWet},
+            {"ir", correctionIRFilePath},
+            {"postGain", correctionPostGain},
+            {"recent", correctionRecent}
+        }},
+        {"bufferSize", bufferSize},
+        {"ui", {
+            {"expanded", {
+                {"correcting", uiExpandedCorrecting},
+                {"preamplifier", uiExpandedPreamplifier},
+                {"equalizer", uiExpandedEqualizer},
+                {"reverb", uiExpandedReverb},
+                {"settings", uiExpandedSettings}
+            }}
+        }}
+    };
+
+    std::ofstream f(configFilePath);
+    if (!f.is_open()) {
+        std::cerr << "[Config] Cannot write config file: " << configFilePath << std::endl;
+        return false;
+    }
+    f << data.dump(4);
+    std::cerr << "[Config] Saved config to: " << configFilePath << std::endl;
+    return true;
+}

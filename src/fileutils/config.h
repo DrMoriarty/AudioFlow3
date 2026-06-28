@@ -13,6 +13,7 @@ public:
     Config(const std::string& configPath = "../config.json");
 
     bool loadConfig();
+    bool saveConfig();
 
     std::string configFilePath;
 

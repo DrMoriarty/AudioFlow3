@@ -13,6 +13,7 @@
 #include <atomic>
 #include <condition_variable>
 #include "audioflow.h"
+#include "permission_request.h"
 #include "processing.h"
 #include "./fileutils/globals.h"
 #include "./lib/json.hpp"
@@ -535,6 +536,26 @@ void setBufferSize(int newBufSize) {
     }
 }
 
+void setUIExpandedCorrecting(bool expanded) {
+    gConfig->uiExpandedCorrecting = expanded;
+}
+
+void setUIExpandedPreamplifier(bool expanded) {
+    gConfig->uiExpandedPreamplifier = expanded;
+}
+
+void setUIExpandedEqualizer(bool expanded) {
+    gConfig->uiExpandedEqualizer = expanded;
+}
+
+void setUIExpandedReverb(bool expanded) {
+    gConfig->uiExpandedReverb = expanded;
+}
+
+void setUIExpandedSettings(bool expanded) {
+    gConfig->uiExpandedSettings = expanded;
+}
+
 void cleanup() {
     running = false;
     processCV.notify_one();
@@ -544,6 +565,8 @@ void cleanup() {
     if (audioWorkerThread.joinable()) {
         audioWorkerThread.join();
     }
+
+    gConfig->saveConfig();
 
     float driverVolume = getAudioDeviceVolume(driverID);
     setAudioDeviceVolume(defaultDeviceID, driverVolume);
@@ -650,6 +673,9 @@ OSStatus defaultDeviceIOProc(
 
 bool initialize(const std::string& configPath) {
     driverID = 0;
+    
+    requestMicrophonePermission();
+    
     // Get device IDs
     std::map<UInt32, std::string> ad = getAudioDevices();
     for (auto const& [key, val] : ad) {
