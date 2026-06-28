@@ -27,6 +27,7 @@ public:
 
 signals:
     void expandedChanged();
+    void toggled(bool checked);
 
 private slots:
     void toggle();

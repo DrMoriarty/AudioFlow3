@@ -422,66 +422,87 @@ void setReverbToggle(bool toggle) {
     audioProcessorMutex.lock();
     audioProcessor->setReverbToggle(toggle);
     audioProcessorMutex.unlock();
+    gConfig->reverbToggle = toggle;
 }
 
 void setReverbDryWet(double dryWet) {
     audioProcessorMutex.lock();
     audioProcessor->setReverbDryWet(dryWet);
     audioProcessorMutex.unlock();
+    gConfig->reverbDryWet = static_cast<float>(dryWet);
 }
 
 void setReverbIRFile(const std::string& path) {
     audioProcessorMutex.lock();
     audioProcessor->setReverbIRFile(path);
     audioProcessorMutex.unlock();
+    gConfig->irFilePath = path;
 }
 
 void setCorrectionToggle(bool toggle) {
     audioProcessorMutex.lock();
     audioProcessor->setCorrectionToggle(toggle);
     audioProcessorMutex.unlock();
+    gConfig->correctionToggle = toggle;
 }
 
 void setCorrectionIRFile(const std::string& path) {
     audioProcessorMutex.lock();
     audioProcessor->setCorrectionIRFile(path);
     audioProcessorMutex.unlock();
+
+    gConfig->correctionIRFilePath = path;
+    auto &recent = gConfig->correctionRecent;
+    recent.erase(std::remove(recent.begin(), recent.end(), path), recent.end());
+    recent.insert(recent.begin(), path);
+    if (recent.size() > 5)
+        recent.resize(5);
 }
 
 void setCorrectionDryWet(double dryWet) {
     audioProcessorMutex.lock();
     audioProcessor->setCorrectionDryWet(dryWet);
     audioProcessorMutex.unlock();
+    gConfig->correctionDryWet = static_cast<float>(dryWet);
 }
 
 void setCorrectionPostGain(float postGain) {
     audioProcessorMutex.lock();
     audioProcessor->setCorrectionPostGain(postGain);
     audioProcessorMutex.unlock();
+    gConfig->correctionPostGain = postGain;
 }
 
 void setEqualizerToggle(bool toggle) {
     audioProcessorMutex.lock();
     audioProcessor->setEqualizerToggle(toggle);
     audioProcessorMutex.unlock();
+    gConfig->equalizerToggle = toggle;
 }
 
 void setAmplifierToggle(bool toggle) {
     audioProcessorMutex.lock();
     audioProcessor->setAmplifierToggle(toggle);
     audioProcessorMutex.unlock();
+    gConfig->ampToggle = toggle;
 }
 
 void setAmplifierGain(float gain) {
     audioProcessorMutex.lock();
     audioProcessor->setAmplifierGain(gain);
     audioProcessorMutex.unlock();
+    gConfig->ampGain = gain;
 }
 
 void setEqualizerBand(int index, float f, float q, float g) {
     audioProcessorMutex.lock();
     audioProcessor->setEqualizerBand(index, f, q, g);
     audioProcessorMutex.unlock();
+    if (index >= 0 && index < 10) {
+        gConfig->equalizerF[static_cast<size_t>(index)] = f;
+        gConfig->equalizerQ[static_cast<size_t>(index)] = q;
+        gConfig->equalizerG[static_cast<size_t>(index)] = g;
+    }
 }
 
 void setBufferSize(int newBufSize) {
@@ -495,6 +516,7 @@ void setBufferSize(int newBufSize) {
         AudioDeviceStop(defaultDeviceID, outputIOProcID);
 
         bufferSize = newBufSize;
+        gConfig->bufferSize = newBufSize;
         setAudioDeviceBufferSize(driverID, newBufSize);
         setAudioDeviceBufferSize(defaultDeviceID, newBufSize);
 

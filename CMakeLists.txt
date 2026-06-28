@@ -64,6 +64,13 @@ install(TARGETS AudioFlow3
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 
+add_custom_command(TARGET AudioFlow3 POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/assets
+        $<TARGET_BUNDLE_CONTENT_DIR:AudioFlow3>/Resources
+    COMMENT "Copying assets to app bundle Resources"
+)
+
 qt_generate_deploy_app_script(
     TARGET AudioFlow3
     OUTPUT_SCRIPT deploy_script

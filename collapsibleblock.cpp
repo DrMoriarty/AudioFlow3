@@ -151,6 +151,7 @@ void CollapsibleBlock::addToggleSwitch()
 
     m_toggleSwitch = new ToggleSwitch(m_headerWidget);
     m_toggleSwitch->setChecked(true);
+    connect(m_toggleSwitch, &ToggleSwitch::toggled, this, &CollapsibleBlock::toggled);
     static_cast<QBoxLayout *>(headerLayout)->addWidget(m_toggleSwitch, 0, Qt::AlignVCenter);
 }
 

@@ -2,6 +2,9 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QSpinBox>
+#include <QSlider>
+#include <QDoubleSpinBox>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -37,5 +40,11 @@ private:
     QVector<int> m_expandedHeights;
     bool m_initialized = false;
     int m_titleBarHeight = -1;
+
+    static const int BAND_COUNT = 10;
+    QSpinBox *m_eqHz[BAND_COUNT] = {};
+    QSlider *m_eqGain[BAND_COUNT] = {};
+    QSpinBox *m_eqGainSpin[BAND_COUNT] = {};
+    QDoubleSpinBox *m_eqQ[BAND_COUNT] = {};
 };
 #endif // MAINWINDOW_H

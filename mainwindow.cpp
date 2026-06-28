@@ -17,6 +17,12 @@
 #include <QDoubleSpinBox>
 #include <QShowEvent>
 #include <QFileInfo>
+#include <QDir>
+#include <QCoreApplication>
+#include <QFileDialog>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
 #include <cmath>
 #include <QTimer>
 #include <QApplication>
@@ -138,10 +144,10 @@ void MainWindow::setupBlocks()
 
     QHBoxLayout *irLayout = new QHBoxLayout();
     QComboBox *irCombo = new QComboBox();
-    QString corrIRName = QFileInfo(QString::fromStdString(m_config.correctionIRFilePath)).fileName();
+    QString corrIRName = QFileInfo(QString::fromStdString(m_config.correctionIRFilePath)).completeBaseName();
     int corrComboIndex = -1;
     for (const auto &path : m_config.correctionRecent) {
-        QString fname = QFileInfo(QString::fromStdString(path)).fileName();
+        QString fname = QFileInfo(QString::fromStdString(path)).completeBaseName();
         irCombo->addItem(fname, QString::fromStdString(path));
         if (fname == corrIRName)
             corrComboIndex = irCombo->count() - 1;
@@ -201,6 +207,31 @@ void MainWindow::setupBlocks()
 
     m_blocks[0]->setContentWidget(correctingContent);
 
+    connect(m_blocks[0], &CollapsibleBlock::toggled, this, [](bool checked) {
+        setCorrectionToggle(checked);
+    });
+    connect(irCombo, &QComboBox::currentIndexChanged, this, [irCombo](int index) {
+        QString path = irCombo->itemData(index).toString();
+        if (!path.isEmpty())
+            setCorrectionIRFile(path.toStdString());
+    });
+    connect(loadIrBtn, &QPushButton::clicked, this, [irCombo]() {
+        QString file = QFileDialog::getOpenFileName(nullptr, "Select IR File", QDir::homePath(), "WAV Files (*.wav)");
+        if (!file.isEmpty()) {
+            setCorrectionIRFile(file.toStdString());
+            irCombo->addItem(QFileInfo(file).completeBaseName(), file);
+            irCombo->setCurrentIndex(irCombo->count() - 1);
+        }
+    });
+    connect(mixSlider, &QSlider::valueChanged, this, [](int v) {
+        setCorrectionDryWet(static_cast<double>(v) / 100.0);
+    });
+    connect(gainKnob, &KnobWidget::valueChanged, this, [](const QString &value) {
+        bool ok;
+        float db = value.toFloat(&ok);
+        if (ok) setCorrectionPostGain(db);
+    });
+
     QWidget *preampContent = new QWidget();
     QVBoxLayout *paLayout = new QVBoxLayout(preampContent);
     paLayout->setContentsMargins(8, 4, 8, 4);
@@ -241,6 +272,13 @@ void MainWindow::setupBlocks()
 
     m_blocks[1]->setContentWidget(preampContent);
 
+    connect(m_blocks[1], &CollapsibleBlock::toggled, this, [](bool checked) {
+        setAmplifierToggle(checked);
+    });
+    connect(gainSlider, &QSlider::valueChanged, this, [](int v) {
+        setAmplifierGain(static_cast<float>(v));
+    });
+
     QWidget *equalizerContent = new QWidget();
     m_eqContent = equalizerContent;
     QVBoxLayout *eqLayout = new QVBoxLayout(equalizerContent);
@@ -250,6 +288,15 @@ void MainWindow::setupBlocks()
     QLabel *presetLabel = new QLabel(tr("Preset"));
     eqLayout->addWidget(presetLabel);
     QComboBox *presetCombo = new QComboBox();
+    QString eqBasePath = QCoreApplication::applicationDirPath() + "/../Resources/eq/";
+    QDir eqDir(eqBasePath);
+    if (eqDir.exists()) {
+        eqDir.setFilter(QDir::Files);
+        eqDir.setNameFilters({"*.json"});
+        eqDir.setSorting(QDir::Name);
+        for (const auto &entry : eqDir.entryInfoList())
+            presetCombo->addItem(entry.completeBaseName(), entry.filePath());
+    }
     eqLayout->addWidget(presetCombo);
 
     QLabel *parametersLabel = new QLabel(tr("Parameters"));
@@ -296,12 +343,14 @@ void MainWindow::setupBlocks()
         hzSpinBoxes[i]->setAlignment(Qt::AlignCenter);
         hzSpinBoxes[i]->setRange(10, 20000);
         hzSpinBoxes[i]->setValue(i < m_config.equalizerF.size() ? static_cast<int>(m_config.equalizerF[i]) : defaultHz[i]);
+        m_eqHz[i] = hzSpinBoxes[i];
         eqGrid->addWidget(hzSpinBoxes[i], 0, col);
 
         eqSliders[i] = new QSlider(Qt::Vertical);
         eqSliders[i]->setRange(-30, 30);
         eqSliders[i]->setValue(i < m_config.equalizerG.size() ? static_cast<int>(m_config.equalizerG[i]) : 0);
         eqSliders[i]->setFixedHeight(200);
+        m_eqGain[i] = eqSliders[i];
         eqGrid->addWidget(eqSliders[i], 1, col, Qt::AlignHCenter);
 
         gainSpinboxes[i] = new QSpinBox();
@@ -309,6 +358,7 @@ void MainWindow::setupBlocks()
         gainSpinboxes[i]->setAlignment(Qt::AlignCenter);
         gainSpinboxes[i]->setRange(-30, 30);
         gainSpinboxes[i]->setValue(i < m_config.equalizerG.size() ? static_cast<int>(m_config.equalizerG[i]) : 0);
+        m_eqGainSpin[i] = gainSpinboxes[i];
         eqGrid->addWidget(gainSpinboxes[i], 2, col);
 
         connect(eqSliders[i], &QSlider::valueChanged, gainSpinboxes[i], &QSpinBox::setValue);
@@ -320,6 +370,7 @@ void MainWindow::setupBlocks()
         qSpinboxes[i]->setRange(0.1, 15.0);
         qSpinboxes[i]->setValue(i < m_config.equalizerQ.size() ? static_cast<double>(m_config.equalizerQ[i]) : 1.0);
         qSpinboxes[i]->setSingleStep(0.1);
+        m_eqQ[i] = qSpinboxes[i];
         eqGrid->addWidget(qSpinboxes[i], 3, col);
     }
 
@@ -330,6 +381,31 @@ void MainWindow::setupBlocks()
     eqGrid->addWidget(qLabel, 3, 0);
 
     eqLayout->addLayout(eqGrid);
+
+    connect(presetCombo, &QComboBox::currentIndexChanged, this, [presetCombo, this](int index) {
+        QString path = presetCombo->itemData(index).toString();
+        if (path.isEmpty())
+            return;
+        QFile file(path);
+        if (!file.open(QIODevice::ReadOnly))
+            return;
+        QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+        QJsonObject obj = doc.object();
+        QJsonArray fArr = obj["f"].toArray();
+        QJsonArray qArr = obj["q"].toArray();
+        QJsonArray gArr = obj["g"].toArray();
+        for (int i = 0; i < BAND_COUNT; ++i) {
+            if (i < fArr.size())
+                m_eqHz[i]->setValue(fArr[i].toInt());
+            if (i < gArr.size()) {
+                int g = gArr[i].toInt();
+                m_eqGain[i]->setValue(g);
+                m_eqGainSpin[i]->setValue(g);
+            }
+            if (i < qArr.size())
+                m_eqQ[i]->setValue(qArr[i].toDouble());
+        }
+    });
 
     int eqContentH = eqLayout->contentsMargins().top() + eqLayout->contentsMargins().bottom();
     eqContentH += presetLabel->sizeHint().height() + presetCombo->sizeHint().height();
@@ -346,6 +422,22 @@ void MainWindow::setupBlocks()
 
     m_blocks[2]->setContentWidget(equalizerContent);
 
+    connect(m_blocks[2], &CollapsibleBlock::toggled, this, [](bool checked) {
+        setEqualizerToggle(checked);
+    });
+
+    auto syncBand = [this](int i) {
+        float f = static_cast<float>(m_eqHz[i]->value());
+        float g = static_cast<float>(m_eqGainSpin[i]->value());
+        float q = static_cast<float>(m_eqQ[i]->value());
+        setEqualizerBand(i, f, q, g);
+    };
+    for (int i = 0; i < BAND_COUNT; ++i) {
+        connect(m_eqHz[i], &QSpinBox::valueChanged, this, [syncBand, i]()  { syncBand(i); });
+        connect(m_eqGainSpin[i], &QSpinBox::valueChanged, this, [syncBand, i]() { syncBand(i); });
+        connect(m_eqQ[i], QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [syncBand, i]() { syncBand(i); });
+    }
+
     QWidget *convolverContent = new QWidget();
     QVBoxLayout *cvLayout = new QVBoxLayout(convolverContent);
     cvLayout->setContentsMargins(8, 4, 8, 4);
@@ -358,14 +450,45 @@ void MainWindow::setupBlocks()
     spaceRowLayout->setContentsMargins(0, 0, 0, 0);
     spaceRowLayout->setSpacing(8);
     QComboBox *spaceCombo = new QComboBox();
-    if (!m_config.irFilePath.empty()) {
-        spaceCombo->addItem(QFileInfo(QString::fromStdString(m_config.irFilePath)).fileName(),
-                             QString::fromStdString(m_config.irFilePath));
-    } else {
-        spaceCombo->addItem(tr("Flat"));
+
+    QString irBasePath = QCoreApplication::applicationDirPath() + "/../Resources/ir/";
+    QDir irDir(irBasePath);
+    int correctReverbIdx = -1;
+    if (irDir.exists()) {
+        irDir.setFilter(QDir::Files);
+        irDir.setNameFilters({"*.wav"});
+        irDir.setSorting(QDir::Name);
+        const auto entries = irDir.entryInfoList();
+        for (const auto &entry : entries) {
+            spaceCombo->addItem(entry.completeBaseName(), entry.filePath());
+            if (entry.completeBaseName() == QFileInfo(QString::fromStdString(m_config.irFilePath)).completeBaseName())
+                correctReverbIdx = spaceCombo->count() - 1;
+        }
     }
+    if (correctReverbIdx >= 0)
+        spaceCombo->setCurrentIndex(correctReverbIdx);
+    else if (!m_config.irFilePath.empty())
+        spaceCombo->addItem(QFileInfo(QString::fromStdString(m_config.irFilePath)).completeBaseName(),
+                             QString::fromStdString(m_config.irFilePath));
+
+    connect(spaceCombo, &QComboBox::currentIndexChanged, this, [spaceCombo](int index) {
+        QString path = spaceCombo->itemData(index).toString();
+        if (!path.isEmpty())
+            setReverbIRFile(path.toStdString());
+    });
+
     spaceRowLayout->addWidget(spaceCombo, 1);
     QPushButton *customBtn = new QPushButton(tr("Custom"));
+
+    connect(customBtn, &QPushButton::clicked, this, [spaceCombo]() {
+        QString file = QFileDialog::getOpenFileName(nullptr, "Select IR File", QDir::homePath(), "WAV Files (*.wav)");
+        if (!file.isEmpty()) {
+            spaceCombo->addItem(QFileInfo(file).completeBaseName(), file);
+            spaceCombo->setCurrentIndex(spaceCombo->count() - 1);
+            setReverbIRFile(file.toStdString());
+        }
+    });
+
     spaceRowLayout->addWidget(customBtn);
     cvLayout->addLayout(spaceRowLayout);
 
@@ -385,10 +508,17 @@ void MainWindow::setupBlocks()
     connect(cvMixSlider, &QSlider::valueChanged, this, [cvMixValue](int v) {
         cvMixValue->setText(QString::number(v) + "%");
     });
+    connect(cvMixSlider, &QSlider::valueChanged, this, [](int v) {
+        setReverbDryWet(static_cast<double>(v) / 100.0);
+    });
     cvMixValue->setText(QString::number(cvMixSlider->value()) + "%");
     cvLayout->addWidget(cvMixSlider);
 
     m_blocks[3]->setContentWidget(convolverContent);
+
+    connect(m_blocks[3], &CollapsibleBlock::toggled, this, [](bool checked) {
+        setReverbToggle(checked);
+    });
 
     QWidget *settingsContent = new QWidget();
     QVBoxLayout *stLayout = new QVBoxLayout(settingsContent);
@@ -405,6 +535,9 @@ void MainWindow::setupBlocks()
     int outDevIdx = outDevNames.indexOf(QString::fromStdString(getCurrentOutputDeviceName()));
     if (outDevIdx >= 0)
         outDevCombo->setCurrentIndex(outDevIdx);
+    connect(outDevCombo, &QComboBox::currentTextChanged, this, [](const QString &text) {
+        setOutputDevice(text.toStdString());
+    });
     stLayout->addWidget(outDevCombo);
 
     QLabel *bufSizeLabel = new QLabel(tr("Buffer size"));
@@ -419,6 +552,10 @@ void MainWindow::setupBlocks()
     }
     if (bufIdx >= 0)
         bufSizeCombo->setCurrentIndex(bufIdx);
+    connect(bufSizeCombo, &QComboBox::currentIndexChanged, this, [bufSizeCombo](int index) {
+        int bs = bufSizeCombo->itemData(index).toInt();
+        if (bs > 0) setBufferSize(bs);
+    });
     stLayout->addWidget(bufSizeCombo);
 
     m_blocks[4]->setContentWidget(settingsContent);
