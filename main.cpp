@@ -7,12 +7,14 @@
 #include <QTranslator>
 #include <QStandardPaths>
 #include <QDir>
+#include <QIcon>
 
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
     QApplication::setStyle("Fusion");
     QApplication::setApplicationName("AudioFlow3");
+    QApplication::setWindowIcon(QIcon(":/icon1024.png"));
 
     QTranslator translator;
     const QStringList uiLanguages = QLocale::system().uiLanguages();

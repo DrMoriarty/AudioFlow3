@@ -82,6 +82,13 @@ add_custom_command(TARGET AudioFlow3 POST_BUILD
 )
 
 add_custom_command(TARGET AudioFlow3 POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+        ${CMAKE_SOURCE_DIR}/icon.icns
+        $<TARGET_BUNDLE_CONTENT_DIR:AudioFlow3>/Resources/icon.icns
+    COMMENT "Copying application icon to app bundle"
+)
+
+add_custom_command(TARGET AudioFlow3 POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         ${CMAKE_SOURCE_DIR}/assets
         $<TARGET_BUNDLE_CONTENT_DIR:AudioFlow3>/Resources

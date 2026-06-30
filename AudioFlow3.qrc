@@ -1,0 +1,9 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+<qresource prefix="/i18n">
+    <file alias="AudioFlow3_en_001.qm">AudioFlow3_en_001.qm</file>
+</qresource>
+<qresource prefix="/">
+    <file alias="icon1024.png">icon1024.png</file>
+</qresource>
+</RCC>
