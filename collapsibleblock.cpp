@@ -152,11 +152,39 @@ void CollapsibleBlock::addToggleSwitch()
     m_toggleSwitch = new ToggleSwitch(m_headerWidget);
     m_toggleSwitch->setChecked(true);
     connect(m_toggleSwitch, &ToggleSwitch::toggled, this, &CollapsibleBlock::toggled);
+    connect(m_toggleSwitch, &ToggleSwitch::toggled, this, [this](bool) { updateHeaderColor(); });
     static_cast<QBoxLayout *>(headerLayout)->addWidget(m_toggleSwitch, 0, Qt::AlignVCenter);
+    updateHeaderColor();
 }
 
 void CollapsibleBlock::setToggleChecked(bool checked)
 {
     if (m_toggleSwitch)
         m_toggleSwitch->setChecked(checked);
+    updateHeaderColor();
+}
+
+void CollapsibleBlock::updateHeaderColor()
+{
+    const int shift = 15;
+    bool on = m_toggleSwitch && m_toggleSwitch->isChecked();
+    int r = on ? 48 + shift : 48;
+    int g = on ? 52 + shift : 52;
+    int b = on ? 56 + shift : 56;
+    m_headerWidget->setStyleSheet(QStringLiteral(
+        "QWidget#headerWidget {"
+        "  border-bottom: 2px solid #606468;"
+        "  border-top-left-radius: 8px;"
+        "  border-top-right-radius: 8px;"
+        "  background-color: rgb(%1, %2, %3);"
+        "}"
+    ).arg(r).arg(g).arg(b));
+
+    const int base = 224;
+    int tr = on ? base : base - 50;
+    int tg = on ? base : base - 50;
+    int tb = on ? base : base - 50;
+    m_titleLabel->setStyleSheet(QStringLiteral(
+        "QLabel { color: rgb(%1, %2, %3); font-weight: bold; }"
+    ).arg(tr).arg(tg).arg(tb));
 }

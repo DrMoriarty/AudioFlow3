@@ -34,6 +34,7 @@ private slots:
 
 private:
     void updateChevron();
+    void updateHeaderColor();
 
     QPushButton *m_toggleButton;
     QLabel *m_titleLabel;
