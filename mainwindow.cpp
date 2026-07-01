@@ -27,6 +27,7 @@
 #include <QTimer>
 #include <QApplication>
 #include <QPalette>
+#include <QColor>
 
 MainWindow::MainWindow(const Config &config, QWidget *parent)
     : QMainWindow(parent)
@@ -87,6 +88,38 @@ void MainWindow::updateFixedHeight()
         m_titleBarHeight = 28;
 
     setFixedSize(600, totalH + m_titleBarHeight);
+}
+
+void MainWindow::updateSliderColor(QSlider *slider)
+{
+    double t = 0.0;
+    int range = slider->maximum() - slider->minimum();
+    if (range > 0)
+        t = static_cast<double>(slider->value() - slider->minimum()) / range;
+
+    int h = static_cast<int>(240 + t * 120);
+    if (h >= 360) h -= 360;
+    QColor color = QColor::fromHsv(h, 200, 40 + 120 * t);
+    QString c = color.name();
+
+    bool horiz = slider->orientation() == Qt::Horizontal;
+    if (horiz) {
+        slider->setStyleSheet(QStringLiteral(
+            "QSlider { padding: 7px; }"
+            "QSlider::groove:horizontal { height: 14px; background: #3a3a3a; border: 1px solid #606468; border-radius: 3px; }"
+            "QSlider::sub-page:horizontal { background: %1; border: 1px solid #606468; border-radius: 3px; }"
+            "QSlider::add-page:horizontal { background: #3a3a3a; border: 1px solid #606468; border-radius: 3px; }"
+            "QSlider::handle:horizontal { width: 14px; margin: -1px 0; background: #a0a0a0; border: 1px solid #808080; border-radius: 3px; }"
+        ).arg(c));
+    } else {
+        slider->setStyleSheet(QStringLiteral(
+            "QSlider { padding: 7px; }"
+            "QSlider::groove:vertical { width: 14px; background: #3a3a3a; border: 1px solid #606468; border-radius: 3px; }"
+            "QSlider::sub-page:vertical { background: #3a3a3a; border: 1px solid #606468; border-radius: 3px; }"
+            "QSlider::add-page:vertical { background: %1; border: 1px solid #606468; border-radius: 3px; }"
+            "QSlider::handle:vertical { height: 14px; margin: 0 -1px; background: #a0a0a0; border: 1px solid #808080; border-radius: 3px; }"
+        ).arg(c));
+    }
 }
 
 void MainWindow::setupBlocks()
@@ -190,6 +223,10 @@ void MainWindow::setupBlocks()
     connect(mixSlider, &QSlider::valueChanged, this, [mixValueLabel](int v) {
         mixValueLabel->setText(QString::number(v) + "%");
     });
+    connect(mixSlider, &QSlider::valueChanged, this, [mixSlider]() {
+        updateSliderColor(mixSlider);
+    });
+    updateSliderColor(mixSlider);
     mixValueLabel->setText(QString::number(mixSlider->value()) + "%");
     sliderColumn->addWidget(mixSlider);
 
@@ -268,6 +305,10 @@ void MainWindow::setupBlocks()
     connect(gainSlider, &QSlider::valueChanged, this, [gainValueLabel](int v) {
         gainValueLabel->setText(QString("%1%2 dB").arg(v >= 0 ? "+" : "").arg(v));
     });
+    connect(gainSlider, &QSlider::valueChanged, this, [gainSlider]() {
+        updateSliderColor(gainSlider);
+    });
+    updateSliderColor(gainSlider);
     gainValueLabel->setText(QString("%1%2 dB").arg(gainSlider->value() >= 0 ? "+" : "").arg(gainSlider->value()));
     paLayout->addWidget(gainSlider);
 
@@ -376,6 +417,10 @@ void MainWindow::setupBlocks()
 
         connect(eqSliders[i], &QSlider::valueChanged, gainSpinboxes[i], &QSpinBox::setValue);
         connect(gainSpinboxes[i], QOverload<int>::of(&QSpinBox::valueChanged), eqSliders[i], &QSlider::setValue);
+        connect(eqSliders[i], &QSlider::valueChanged, this, [s = eqSliders[i]]() {
+            updateSliderColor(s);
+        });
+        updateSliderColor(eqSliders[i]);
 
         qSpinboxes[i] = new QDoubleSpinBox();
         qSpinboxes[i]->setButtonSymbols(QAbstractSpinBox::NoButtons);
@@ -521,6 +566,10 @@ void MainWindow::setupBlocks()
     connect(cvMixSlider, &QSlider::valueChanged, this, [cvMixValue](int v) {
         cvMixValue->setText(QString::number(v) + "%");
     });
+    connect(cvMixSlider, &QSlider::valueChanged, this, [cvMixSlider]() {
+        updateSliderColor(cvMixSlider);
+    });
+    updateSliderColor(cvMixSlider);
     connect(cvMixSlider, &QSlider::valueChanged, this, [](int v) {
         setReverbDryWet(static_cast<double>(v) / 100.0);
     });

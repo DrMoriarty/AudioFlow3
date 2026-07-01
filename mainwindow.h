@@ -30,6 +30,7 @@ protected:
 private:
     void setupBlocks();
     void updateFixedHeight();
+    static void updateSliderColor(QSlider *slider);
 
     Ui::MainWindow *ui;
     const Config &m_config;
