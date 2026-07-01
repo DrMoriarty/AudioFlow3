@@ -277,8 +277,10 @@ void MainWindow::setupBlocks()
         setCorrectionDryWet(static_cast<double>(v) / 100.0);
     });
     connect(gainKnob, &KnobWidget::valueChanged, this, [](const QString &value) {
+        QString num = value;
+        num.remove(" dB");
         bool ok;
-        float db = value.toFloat(&ok);
+        float db = num.toFloat(&ok);
         if (ok) setCorrectionPostGain(db);
     });
 
