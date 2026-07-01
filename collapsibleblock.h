@@ -40,6 +40,7 @@ private:
     QLabel *m_titleLabel;
     QWidget *m_headerWidget;
     QWidget *m_contentWidget;
+    QWidget *m_leftSpacer;
     QVBoxLayout *m_mainLayout;
     ToggleSwitch *m_toggleSwitch = nullptr;
     bool m_expanded;

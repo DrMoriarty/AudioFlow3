@@ -58,6 +58,10 @@ CollapsibleBlock::CollapsibleBlock(const QString &title, QWidget *parent)
     font.setBold(true);
     m_titleLabel->setFont(font);
 
+    m_leftSpacer = new QWidget(headerWidget);
+    m_leftSpacer->setFixedSize(14, 22);
+    m_leftSpacer->setStyleSheet("background: transparent; border: none;");
+    headerLayout->addWidget(m_leftSpacer);
     headerLayout->addWidget(m_toggleButton);
     headerLayout->addStretch();
     headerLayout->addWidget(m_titleLabel, 1);
@@ -65,7 +69,7 @@ CollapsibleBlock::CollapsibleBlock(const QString &title, QWidget *parent)
 
     QWidget *spacer = new QWidget(headerWidget);
     spacer->setObjectName("headerRightSpacer");
-    spacer->setFixedSize(20, 20);
+    spacer->setFixedSize(40, 22);
     headerLayout->addWidget(spacer);
 
     m_mainLayout->addWidget(headerWidget);
