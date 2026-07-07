@@ -139,12 +139,16 @@ jobs:
       - name: Verify architectures
         run: lipo -archs build/AudioFlow3.app/Contents/MacOS/AudioFlow3
 
+      - name: Read version
+        id: version
+        run: echo "VERSION=$(cat version)" >> "$GITHUB_OUTPUT"
+
       - name: Create zip
-        run: ditto -c -k --sequesterRsrc --keepParent build/AudioFlow3.app AudioFlow3-macos-universal.zip
+        run: ditto -c -k --sequesterRsrc --keepParent build/AudioFlow3.app "AudioFlow3-${{ steps.version.outputs.VERSION }}-macos-universal.zip"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AudioFlow3-macos-universal
-          path: AudioFlow3-macos-universal.zip
+          name: AudioFlow3-${{ steps.version.outputs.VERSION }}-macos-universal
+          path: AudioFlow3-${{ steps.version.outputs.VERSION }}-macos-universal.zip
           if-no-files-found: error

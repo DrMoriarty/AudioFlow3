@@ -8,6 +8,10 @@
 #include <QStandardPaths>
 #include <QDir>
 #include <QIcon>
+#include <QMessageBox>
+#include <QPushButton>
+#include <QDesktopServices>
+#include <QUrl>
 
 extern "C" void setupDockReopen(QMainWindow *window);
 
@@ -34,7 +38,19 @@ int main(int argc, char *argv[])
     QDir().mkpath(configPath);
     QString configFile = configPath + "/config.json";
 
-    initialize(configFile.toStdString());
+    if (!initialize(configFile.toStdString())) {
+        QMessageBox dialog(QMessageBox::Warning, "AudioFlow3",
+            QCoreApplication::translate("main",
+                "The application requires the BlackHole audio driver to be installed.\n\n"
+                "Without it, the application cannot function."),
+            QMessageBox::NoButton);
+        QPushButton *downloadBtn = dialog.addButton(
+            QCoreApplication::translate("main", "Download BlackHole"), QMessageBox::AcceptRole);
+        dialog.exec();
+        if (dialog.clickedButton() == downloadBtn)
+            QDesktopServices::openUrl(QUrl("http://existential.audio/blackhole/"));
+        return 1;
+    }
 
     QObject::connect(&a, &QCoreApplication::aboutToQuit, []() { cleanup(); });
 
