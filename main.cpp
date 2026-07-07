@@ -9,12 +9,16 @@
 #include <QDir>
 #include <QIcon>
 
+extern "C" void setupDockReopen(QMainWindow *window);
+
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
     QApplication::setStyle("Fusion");
     QApplication::setApplicationName("AudioFlow3");
+    QApplication::setApplicationVersion(APP_VERSION);
     QApplication::setWindowIcon(QIcon(":/icon1024.png"));
+    QApplication::setQuitOnLastWindowClosed(false);
 
     QTranslator translator;
     const QStringList uiLanguages = QLocale::system().uiLanguages();
@@ -35,6 +39,7 @@ int main(int argc, char *argv[])
     QObject::connect(&a, &QCoreApplication::aboutToQuit, []() { cleanup(); });
 
     MainWindow w(getConfig());
+    setupDockReopen(&w);
     w.show();
     return QApplication::exec();
 }

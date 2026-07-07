@@ -557,6 +557,9 @@ void setUIExpandedSettings(bool expanded) {
 }
 
 void cleanup() {
+    static std::atomic<bool> cleanedUp{false};
+    if (cleanedUp.exchange(true)) return;
+
     running = false;
     processCV.notify_one();
 

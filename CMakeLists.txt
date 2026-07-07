@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.19)
+file(STRINGS version APP_VERSION)
 project(AudioFlow3 LANGUAGES CXX)
+add_compile_definitions(APP_VERSION="${APP_VERSION}")
 
 find_package(Qt6 6.5 REQUIRED COMPONENTS Core Widgets LinguistTools)
 
@@ -20,6 +22,7 @@ qt_add_executable(AudioFlow3
         src/audioflow.cpp
         src/audioflow.h
         src/permission.mm
+        src/dockreopen.mm
     src/processing.cpp
     src/processing.h
     src/fileutils/globals.cpp
@@ -74,9 +77,11 @@ install(TARGETS AudioFlow3
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 
+configure_file(${CMAKE_SOURCE_DIR}/Info.plist ${CMAKE_BINARY_DIR}/Info.plist @ONLY)
+
 add_custom_command(TARGET AudioFlow3 POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy
-        ${CMAKE_SOURCE_DIR}/Info.plist
+        ${CMAKE_BINARY_DIR}/Info.plist
         $<TARGET_BUNDLE_CONTENT_DIR:AudioFlow3>/Info.plist
     COMMENT "Copying custom Info.plist to app bundle"
 )

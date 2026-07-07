@@ -1,0 +1,150 @@
+name: Build macOS Universal
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-arm64:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.5.3'
+          target: 'desktop'
+          host: 'mac'
+          arch: 'macos'
+
+      - name: Build
+        run: |
+          cmake -B build -S . -DCMAKE_OSX_ARCHITECTURES=arm64
+          cmake --build build
+        env:
+          MACOSX_DEPLOYMENT_TARGET: '13.0'
+
+      - name: Deploy Qt
+        run: macdeployqt build/AudioFlow3.app -verbose=2
+
+      - name: Ad-hoc sign
+        run: codesign --force --deep --sign - build/AudioFlow3.app
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-arm64
+          path: build/AudioFlow3.app
+          if-no-files-found: error
+
+  build-x86_64:
+    runs-on: macos-13
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.5.3'
+          target: 'desktop'
+          host: 'mac'
+          arch: 'macos'
+
+      - name: Build
+        run: |
+          cmake -B build -S . -DCMAKE_OSX_ARCHITECTURES=x86_64
+          cmake --build build
+        env:
+          MACOSX_DEPLOYMENT_TARGET: '13.0'
+
+      - name: Deploy Qt
+        run: macdeployqt build/AudioFlow3.app -verbose=2
+
+      - name: Ad-hoc sign
+        run: codesign --force --deep --sign - build/AudioFlow3.app
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-x86_64
+          path: build/AudioFlow3.app
+          if-no-files-found: error
+
+  merge:
+    runs-on: macos-14
+    needs: [build-arm64, build-x86_64]
+    steps:
+      - name: Download arm64
+        uses: actions/download-artifact@v4
+        with:
+          name: app-arm64
+          path: app-arm64
+
+      - name: Download x86_64
+        uses: actions/download-artifact@v4
+        with:
+          name: app-x86_64
+          path: app-x86_64
+
+      - name: Create universal binary
+        run: |
+          cp -R app-arm64/AudioFlow3.app build/AudioFlow3.app
+
+          merge_bin() {
+            local x86="$1"
+            local arm="$2"
+            local out="$3"
+
+            if [ ! -f "$x86" ] || [ ! -f "$arm" ]; then
+              return 0
+            fi
+
+            kind=$(file "$arm")
+            if echo "$kind" | grep -q "Mach-O"; then
+              mkdir -p "$(dirname "$out")"
+              lipo -create "$x86" "$arm" -output "$out"
+              echo "merged: $out"
+            fi
+          }
+
+          # Main executable
+          merge_bin \
+            app-x86_64/AudioFlow3.app/Contents/MacOS/AudioFlow3 \
+            app-arm64/AudioFlow3.app/Contents/MacOS/AudioFlow3 \
+            build/AudioFlow3.app/Contents/MacOS/AudioFlow3
+
+          # Frameworks
+          for arm_fw in app-arm64/AudioFlow3.app/Contents/Frameworks/*.framework; do
+            fw_name=$(basename "$arm_fw")
+            x86_fw="app-x86_64/AudioFlow3.app/Contents/Frameworks/$fw_name"
+            bin_name="${fw_name%.framework}"
+            arm_bin="$arm_fw/$bin_name"
+            x86_bin="$x86_fw/$bin_name"
+            out_bin="build/AudioFlow3.app/Contents/Frameworks/$fw_name/$bin_name"
+            merge_bin "$x86_bin" "$arm_bin" "$out_bin"
+          done
+
+          # Dylibs
+          for arm_lib in app-arm64/AudioFlow3.app/Contents/Frameworks/*.dylib; do
+            [ -f "$arm_lib" ] || continue
+            lib_name=$(basename "$arm_lib")
+            merge_bin \
+              "app-x86_64/AudioFlow3.app/Contents/Frameworks/$lib_name" \
+              "$arm_lib" \
+              "build/AudioFlow3.app/Contents/Frameworks/$lib_name"
+          done
+
+          codesign --force --deep --sign - build/AudioFlow3.app
+
+      - name: Verify architectures
+        run: lipo -archs build/AudioFlow3.app/Contents/MacOS/AudioFlow3
+
+      - name: Create zip
+        run: ditto -c -k --sequesterRsrc --keepParent build/AudioFlow3.app AudioFlow3-macos-universal.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AudioFlow3-macos-universal
+          path: AudioFlow3-macos-universal.zip
+          if-no-files-found: error

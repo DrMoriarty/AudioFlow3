@@ -208,6 +208,7 @@ void MainWindow::setupBlocks()
     QVBoxLayout *sliderColumn = new QVBoxLayout();
     sliderColumn->setContentsMargins(0, 0, 0, 0);
     sliderColumn->setSpacing(4);
+    sliderColumn->addStretch();
     QHBoxLayout *mixHeaderLayout = new QHBoxLayout();
     mixHeaderLayout->setContentsMargins(0, 0, 0, 0);
     QLabel *mixLabel = new QLabel(tr("Dry/Wet Mix"));
@@ -229,6 +230,7 @@ void MainWindow::setupBlocks()
     updateSliderColor(mixSlider);
     mixValueLabel->setText(QString::number(mixSlider->value()) + "%");
     sliderColumn->addWidget(mixSlider);
+    sliderColumn->addStretch();
 
     QHBoxLayout *mixKnobLayout = new QHBoxLayout();
     mixKnobLayout->setContentsMargins(0, 0, 0, 0);
@@ -238,7 +240,7 @@ void MainWindow::setupBlocks()
     QVBoxLayout *knobLayout = new QVBoxLayout();
     knobLayout->setContentsMargins(0, 0, 0, 0);
     knobLayout->setSpacing(2);
-    knobLayout->setAlignment(Qt::AlignBottom | Qt::AlignHCenter);
+    knobLayout->setAlignment(Qt::AlignCenter);
     QLabel *gainLabel = new QLabel(tr("Gain"));
     gainLabel->setAlignment(Qt::AlignCenter);
     knobLayout->addWidget(gainLabel);
