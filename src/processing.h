@@ -33,6 +33,8 @@ public:
     void setEqualizerToggle(bool toggle);
     void setAmplifierToggle(bool toggle);
     void setAmplifierGain(float gain);
+    void setAmplifierAuto(bool enabled);
+    float getAmplifierAutoGainValue();
     void setEqualizerBand(int index, float f, float q, float g);
 private:
     double volume;

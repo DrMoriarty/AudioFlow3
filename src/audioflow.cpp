@@ -495,6 +495,20 @@ void setAmplifierGain(float gain) {
     gConfig->ampGain = gain;
 }
 
+void setAmplifierAuto(bool enabled) {
+    audioProcessorMutex.lock();
+    audioProcessor->setAmplifierAuto(enabled);
+    audioProcessorMutex.unlock();
+    gConfig->ampAuto = enabled;
+}
+
+float getAmplifierAutoGainValue() {
+    std::lock_guard<std::mutex> lock(audioProcessorMutex);
+    float v = audioProcessor->getAmplifierAutoGainValue();
+    gConfig->ampGain = v;
+    return v;
+}
+
 void setEqualizerBand(int index, float f, float q, float g) {
     audioProcessorMutex.lock();
     audioProcessor->setEqualizerBand(index, f, q, g);

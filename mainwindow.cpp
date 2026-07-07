@@ -337,6 +337,35 @@ void MainWindow::setupBlocks()
         setAmplifierGain(static_cast<float>(v));
     });
 
+    connect(autoSwitch, &QCheckBox::toggled, this, [this, gainSlider, gainValueLabel, autoSwitch](bool checked) {
+        setAmplifierAuto(checked);
+        gainSlider->setDisabled(checked);
+        if (checked) {
+            m_ampAutoTimer = new QTimer(this);
+            connect(m_ampAutoTimer, &QTimer::timeout, this, [gainSlider, gainValueLabel, this]() {
+                float v = getAmplifierAutoGainValue();
+                int iv = qBound(-30, static_cast<int>(v + 0.5f), 30);
+                if (gainSlider->value() != iv) {
+                    gainSlider->blockSignals(true);
+                    gainSlider->setValue(iv);
+                    gainSlider->blockSignals(false);
+                    gainValueLabel->setText(QString("%1%2 dB").arg(iv >= 0 ? "+" : "").arg(iv));
+                    updateSliderColor(gainSlider);
+                }
+            });
+            m_ampAutoTimer->start(200);
+        } else {
+            if (m_ampAutoTimer) {
+                m_ampAutoTimer->stop();
+                m_ampAutoTimer->deleteLater();
+                m_ampAutoTimer = nullptr;
+            }
+        }
+    });
+    if (m_config.ampAuto) {
+        autoSwitch->setChecked(true);
+    }
+
     QWidget *equalizerContent = new QWidget();
     m_eqContent = equalizerContent;
     QVBoxLayout *eqLayout = new QVBoxLayout(equalizerContent);

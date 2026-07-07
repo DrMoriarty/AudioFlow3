@@ -18,6 +18,7 @@ public:
     std::string configFilePath;
 
     bool ampToggle;
+    bool ampAuto;
     float ampGain;
 
     bool equalizerToggle;

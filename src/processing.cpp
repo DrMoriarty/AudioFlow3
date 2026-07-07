@@ -11,7 +11,11 @@
 Processing::Processing(const Config& config, double volume, float deviceSampleRate) :
     config(config),
     deviceSampleRate(deviceSampleRate),
-    amplifier(std::make_shared<Amplifier>(config.ampToggle, config.ampGain)),
+    amplifier([&]() {
+        auto amp = std::make_shared<Amplifier>(config.ampToggle, config.ampGain);
+        amp->setAutoGain(config.ampAuto);
+        return amp;
+    }()),
     equalizer(std::make_shared<Equalizer>(config.equalizerToggle, config.equalizerF, config.equalizerQ, config.equalizerG, deviceSampleRate)),
     correctionConvolver(std::make_shared<ConvolutionReverb>(config.correctionToggle, config.correctionIRFilePath, config.correctionDryWet, deviceSampleRate, config.correctionPostGain)),
     convolutionReverb(std::make_shared<ConvolutionReverb>(config.reverbToggle, config.irFilePath, config.reverbDryWet, deviceSampleRate)),
@@ -155,6 +159,16 @@ void Processing::setAmplifierToggle(bool toggle) {
 void Processing::setAmplifierGain(float gain) {
     std::lock_guard<std::mutex> lock(swapMutex);
     amplifier->setGain(gain);
+}
+
+void Processing::setAmplifierAuto(bool enabled) {
+    std::lock_guard<std::mutex> lock(swapMutex);
+    amplifier->setAutoGain(enabled);
+}
+
+float Processing::getAmplifierAutoGainValue() {
+    std::lock_guard<std::mutex> lock(swapMutex);
+    return amplifier->getAutoGainValue();
 }
 
 void Processing::setEqualizerBand(int index, float f, float q, float g) {

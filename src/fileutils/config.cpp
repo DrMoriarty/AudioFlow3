@@ -9,6 +9,7 @@ using json = nlohmann::json;
 
 Config::Config(const std::string& configPath) : configFilePath(configPath) {
     ampToggle = false;
+    ampAuto = false;
     ampGain = 0.0f;
 
     equalizerToggle = false;
@@ -47,6 +48,7 @@ bool Config::loadConfig() {
     json data = json::parse(f);
 
     bool ampToggle = data.at("amplifier").at("toggle").get<bool>();
+    bool ampAuto = data.at("amplifier").contains("auto") ? data.at("amplifier").at("auto").get<bool>() : false;
     float ampGain = data.at("amplifier").at("g").get<float>();
 
     bool equalizerToggle = data.at("equalizer").at("toggle").get<bool>();
@@ -72,8 +74,9 @@ bool Config::loadConfig() {
     bool uiExpandedReverb = data.contains("ui") && data["ui"].contains("expanded") && data["ui"]["expanded"].contains("reverb") ? data["ui"]["expanded"]["reverb"].get<bool>() : false;
     bool uiExpandedSettings = data.contains("ui") && data["ui"].contains("expanded") && data["ui"]["expanded"].contains("settings") ? data["ui"]["expanded"]["settings"].get<bool>() : false;
 
-    if (ampToggle != this->ampToggle || ampGain != this->ampGain || equalizerToggle != this->equalizerToggle || equalizerF != this->equalizerF || equalizerQ != this->equalizerQ || equalizerG != this->equalizerG || reverbToggle != this->reverbToggle || reverbDryWet != this->reverbDryWet || irFilePath != this->irFilePath || correctionToggle != this->correctionToggle || correctionDryWet != this->correctionDryWet || correctionIRFilePath != this->correctionIRFilePath || correctionPostGain != this->correctionPostGain || bufferSize != this->bufferSize || uiExpandedCorrecting != this->uiExpandedCorrecting || uiExpandedPreamplifier != this->uiExpandedPreamplifier || uiExpandedEqualizer != this->uiExpandedEqualizer || uiExpandedReverb != this->uiExpandedReverb || uiExpandedSettings != this->uiExpandedSettings || correctionRecent != this->correctionRecent) {
+    if (ampToggle != this->ampToggle || ampAuto != this->ampAuto || ampGain != this->ampGain || equalizerToggle != this->equalizerToggle || equalizerF != this->equalizerF || equalizerQ != this->equalizerQ || equalizerG != this->equalizerG || reverbToggle != this->reverbToggle || reverbDryWet != this->reverbDryWet || irFilePath != this->irFilePath || correctionToggle != this->correctionToggle || correctionDryWet != this->correctionDryWet || correctionIRFilePath != this->correctionIRFilePath || correctionPostGain != this->correctionPostGain || bufferSize != this->bufferSize || uiExpandedCorrecting != this->uiExpandedCorrecting || uiExpandedPreamplifier != this->uiExpandedPreamplifier || uiExpandedEqualizer != this->uiExpandedEqualizer || uiExpandedReverb != this->uiExpandedReverb || uiExpandedSettings != this->uiExpandedSettings || correctionRecent != this->correctionRecent) {
         this->ampToggle = ampToggle;
+        this->ampAuto = ampAuto;
         this->ampGain = ampGain;
 
         this->equalizerToggle = equalizerToggle;
@@ -109,6 +112,7 @@ bool Config::saveConfig() {
     json data = {
         {"amplifier", {
             {"toggle", ampToggle},
+            {"auto", ampAuto},
             {"g", ampGain}
         }},
         {"equalizer", {
