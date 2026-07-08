@@ -550,6 +550,10 @@ void setBufferSize(int newBufSize) {
     }
 }
 
+float getLatencyMs() {
+    return static_cast<float>(bufferSize) / deviceSampleRate * 1000.0f;
+}
+
 void setUIExpandedCorrecting(bool expanded) {
     gConfig->uiExpandedCorrecting = expanded;
 }

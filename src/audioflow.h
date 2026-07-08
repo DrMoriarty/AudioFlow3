@@ -25,6 +25,7 @@ void setAmplifierAuto(bool enabled);
 float getAmplifierAutoGainValue();
 void setEqualizerBand(int index, float f, float q, float g);
 void setBufferSize(int newBufSize);
+float getLatencyMs();
 
 void setUIExpandedCorrecting(bool expanded);
 void setUIExpandedPreamplifier(bool expanded);

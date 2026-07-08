@@ -6,6 +6,7 @@
 #include <QSlider>
 #include <QDoubleSpinBox>
 #include <QTimer>
+#include <QLabel>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -43,6 +44,7 @@ private:
     bool m_initialized = false;
     int m_titleBarHeight = -1;
     QTimer *m_ampAutoTimer = nullptr;
+    QLabel *m_latencyLabel = nullptr;
 
     static const int BAND_COUNT = 10;
     QSpinBox *m_eqHz[BAND_COUNT] = {};

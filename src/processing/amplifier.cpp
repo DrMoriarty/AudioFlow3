@@ -17,7 +17,7 @@ void Amplifier::process(std::vector<double> &input) {
     if (currentMix <= 0 && mixRemaining <= 0) return;
 
     if (m_autoGain.load(std::memory_order_relaxed)) {
-        constexpr double TARGET_DB = -16.0;
+        constexpr double TARGET_DB = -14.0;
         constexpr double SMOOTH = 0.005;
 
         for (auto &sample : input) {

@@ -29,6 +29,8 @@
 #include <QPalette>
 #include <QColor>
 
+#include <QStatusBar>
+
 MainWindow::MainWindow(const Config &config, QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -36,6 +38,18 @@ MainWindow::MainWindow(const Config &config, QWidget *parent)
 {
     ui->setupUi(this);
     setupBlocks();
+
+    m_latencyLabel = new QLabel();
+    statusBar()->addPermanentWidget(m_latencyLabel);
+    statusBar()->setStyleSheet("QStatusBar{border-top:1px solid rgb(60,60,60);}");
+
+    auto *latencyTimer = new QTimer(this);
+    connect(latencyTimer, &QTimer::timeout, this, [this]() {
+        float ms = getLatencyMs();
+        m_latencyLabel->setText(QString("Latency: %1 ms").arg(ms, 0, 'f', 1));
+    });
+    latencyTimer->start(1000);
+    m_latencyLabel->setText(QString("Latency: %1 ms").arg(getLatencyMs(), 0, 'f', 1));
 }
 
 MainWindow::~MainWindow()
