@@ -45,6 +45,7 @@ private:
     int m_titleBarHeight = -1;
     QTimer *m_ampAutoTimer = nullptr;
     QLabel *m_latencyLabel = nullptr;
+    QLabel *m_processLabel = nullptr;
 
     static const int BAND_COUNT = 10;
     QSpinBox *m_eqHz[BAND_COUNT] = {};

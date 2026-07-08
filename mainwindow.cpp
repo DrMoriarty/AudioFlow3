@@ -40,16 +40,19 @@ MainWindow::MainWindow(const Config &config, QWidget *parent)
     setupBlocks();
 
     m_latencyLabel = new QLabel();
+    m_processLabel = new QLabel();
+    statusBar()->addPermanentWidget(m_processLabel);
     statusBar()->addPermanentWidget(m_latencyLabel);
     statusBar()->setStyleSheet("QStatusBar{border-top:1px solid rgb(60,60,60);}");
 
-    auto *latencyTimer = new QTimer(this);
-    connect(latencyTimer, &QTimer::timeout, this, [this]() {
-        float ms = getLatencyMs();
-        m_latencyLabel->setText(QString("Latency: %1 ms").arg(ms, 0, 'f', 1));
+    auto *statusTimer = new QTimer(this);
+    connect(statusTimer, &QTimer::timeout, this, [this]() {
+        m_latencyLabel->setText(QString("Latency: %1 ms").arg(getLatencyMs(), 0, 'f', 1));
+        m_processLabel->setText(QString("Process: %1 ms").arg(getProcessTimeMs(), 0, 'f', 2));
     });
-    latencyTimer->start(1000);
+    statusTimer->start(1000);
     m_latencyLabel->setText(QString("Latency: %1 ms").arg(getLatencyMs(), 0, 'f', 1));
+    m_processLabel->setText(QString("Process: %1 ms").arg(getProcessTimeMs(), 0, 'f', 2));
 }
 
 MainWindow::~MainWindow()

@@ -17,6 +17,7 @@
 #include "processing.h"
 #include "./fileutils/globals.h"
 #include "./lib/json.hpp"
+#include <chrono>
 
 using json = nlohmann::json;
 
@@ -42,6 +43,7 @@ std::mutex audioProcessorMutex;
 Config* gConfig = nullptr;
 
 std::atomic<bool> running{true};
+std::atomic<float> lastProcessMs{0.0f};
 
 std::map<UInt32 , std::string> getAudioDevices() {
     AudioObjectPropertyAddress propAddress;
@@ -554,6 +556,10 @@ float getLatencyMs() {
     return static_cast<float>(bufferSize) / deviceSampleRate * 1000.0f;
 }
 
+float getProcessTimeMs() {
+    return lastProcessMs.load(std::memory_order_relaxed);
+}
+
 void setUIExpandedCorrecting(bool expanded) {
     gConfig->uiExpandedCorrecting = expanded;
 }
@@ -619,7 +625,12 @@ void audioWorker() {
             inputBuffer.erase(inputBuffer.begin(), inputBuffer.begin() + toProcess);
         }
 
+        auto t0 = std::chrono::steady_clock::now();
         audioProcessor->process(chunk);
+        auto t1 = std::chrono::steady_clock::now();
+        float elapsed = std::chrono::duration<float, std::milli>(t1 - t0).count();
+        float prev = lastProcessMs.load(std::memory_order_relaxed);
+        lastProcessMs.store(prev * 0.95f + elapsed * 0.05f, std::memory_order_relaxed);
 
         {
             std::lock_guard<std::mutex> lock(processMutex);
