@@ -5,7 +5,7 @@ on:
 
 jobs:
   build-arm64:
-    runs-on: macos-14
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -38,7 +38,7 @@ jobs:
           if-no-files-found: error
 
   build-x86_64:
-    runs-on: macos-13
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -71,7 +71,7 @@ jobs:
           if-no-files-found: error
 
   merge:
-    runs-on: macos-14
+    runs-on: macos-latest
     needs: [build-arm64, build-x86_64]
     steps:
       - name: Download arm64
