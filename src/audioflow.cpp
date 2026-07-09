@@ -28,17 +28,55 @@ float deviceSampleRate;
 AudioDeviceIOProcID inputIOProcId;
 AudioDeviceIOProcID outputIOProcID;
 
-std::vector<float> inputBuffer;
-std::vector<float> processBuffer;
-std::vector<float> outputBuffer;
-std::mutex inputMutex;
-std::mutex processMutex;
-
 std::thread audioWorkerThread;
-std::condition_variable processCV;
 
 std::unique_ptr<Processing> audioProcessor;
 std::mutex audioProcessorMutex;
+
+class RingBuffer {
+public:
+    explicit RingBuffer(size_t capacity)
+        : m_buf(capacity), m_mask(capacity - 1) {}
+    size_t write(const float* data, size_t count) {
+        size_t w = m_writePos.load(std::memory_order_relaxed);
+        size_t r = m_readPos.load(std::memory_order_acquire);
+        size_t free = m_buf.size() - (w - r);
+        size_t toWrite = std::min(count, free);
+        for (size_t i = 0; i < toWrite; ++i)
+            m_buf[(w + i) & m_mask] = data[i];
+        m_writePos.store(w + toWrite, std::memory_order_release);
+        return toWrite;
+    }
+    size_t read(float* data, size_t count) {
+        size_t r = m_readPos.load(std::memory_order_relaxed);
+        size_t w = m_writePos.load(std::memory_order_acquire);
+        size_t avail = w - r;
+        size_t toRead = std::min(count, avail);
+        for (size_t i = 0; i < toRead; ++i)
+            data[i] = m_buf[(r + i) & m_mask];
+        m_readPos.store(r + toRead, std::memory_order_release);
+        return toRead;
+    }
+    size_t available() const {
+        size_t w = m_writePos.load(std::memory_order_acquire);
+        size_t r = m_readPos.load(std::memory_order_acquire);
+        return w - r;
+    }
+    void clear() {
+        m_writePos.store(0, std::memory_order_relaxed);
+        m_readPos.store(0, std::memory_order_relaxed);
+    }
+private:
+    std::vector<float> m_buf;
+    size_t m_mask;
+    std::atomic<size_t> m_writePos{0};
+    std::atomic<size_t> m_readPos{0};
+};
+
+static const size_t RING_CAPACITY = 65536;
+RingBuffer outputRing(RING_CAPACITY);
+float lastOutSample = 0.0f;
+RingBuffer inputRing(RING_CAPACITY);
 
 Config* gConfig = nullptr;
 
@@ -381,15 +419,9 @@ bool setOutputDevice(const std::string& name) {
     AudioDeviceDestroyIOProcID(driverID, inputIOProcId);
     AudioDeviceDestroyIOProcID(defaultDeviceID, outputIOProcID);
 
-    {
-        std::lock_guard<std::mutex> lock(inputMutex);
-        inputBuffer.clear();
-    }
-    {
-        std::lock_guard<std::mutex> lock(processMutex);
-        processBuffer.clear();
-        outputBuffer.clear();
-    }
+    inputRing.clear();
+    outputRing.clear();
+    lastOutSample = 0.0f;
 
     defaultDeviceID = newDeviceID;
     setAudioDeviceVolume(defaultDeviceID, 1);
@@ -537,15 +569,9 @@ void setBufferSize(int newBufSize) {
         setAudioDeviceBufferSize(driverID, newBufSize);
         setAudioDeviceBufferSize(defaultDeviceID, newBufSize);
 
-        {
-            std::lock_guard<std::mutex> lock(inputMutex);
-            inputBuffer.clear();
-        }
-        {
-            std::lock_guard<std::mutex> lock(processMutex);
-            processBuffer.clear();
-            outputBuffer.clear();
-        }
+        inputRing.clear();
+        outputRing.clear();
+        lastOutSample = 0.0f;
 
         AudioDeviceStart(driverID, inputIOProcId);
         AudioDeviceStart(defaultDeviceID, outputIOProcID);
@@ -585,7 +611,6 @@ void cleanup() {
     if (cleanedUp.exchange(true)) return;
 
     running = false;
-    processCV.notify_one();
 
     std::cerr << "[main] exiting main loop" << std::endl;
 
@@ -610,20 +635,16 @@ void cleanup() {
 }
 
 void audioWorker() {
+    size_t chunkSize = static_cast<size_t>(2 * bufferSize);
+    std::vector<float> chunk(chunkSize);
     while (running) {
-        std::vector<float> chunk;
-        {
-            std::unique_lock<std::mutex> lock(inputMutex);
-            processCV.wait_for(lock, std::chrono::milliseconds(100), [] {
-                return !inputBuffer.empty() || !running;
-            });
-            if (!running) break;
-            if (inputBuffer.empty()) continue;
-            size_t chunkSize = static_cast<size_t>(2 * bufferSize);
-            size_t toProcess = std::min(chunkSize, inputBuffer.size());
-            chunk.assign(inputBuffer.begin(), inputBuffer.begin() + toProcess);
-            inputBuffer.erase(inputBuffer.begin(), inputBuffer.begin() + toProcess);
+        size_t avail = inputRing.available();
+        if (avail < chunkSize) {
+            std::this_thread::sleep_for(std::chrono::microseconds(500));
+            continue;
         }
+
+        inputRing.read(chunk.data(), chunkSize);
 
         auto t0 = std::chrono::steady_clock::now();
         audioProcessor->process(chunk);
@@ -632,15 +653,7 @@ void audioWorker() {
         float prev = lastProcessMs.load(std::memory_order_relaxed);
         lastProcessMs.store(prev * 0.95f + elapsed * 0.05f, std::memory_order_relaxed);
 
-        {
-            std::lock_guard<std::mutex> lock(processMutex);
-            outputBuffer.insert(outputBuffer.end(), chunk.begin(), chunk.end());
-
-            size_t maxOutput = static_cast<size_t>(8 * bufferSize);
-            if (outputBuffer.size() > maxOutput) {
-                outputBuffer.erase(outputBuffer.begin(), outputBuffer.begin() + (outputBuffer.size() - maxOutput));
-            }
-        }
+        outputRing.write(chunk.data(), chunkSize);
     }
 }
 
@@ -657,20 +670,7 @@ OSStatus driverIOProc(
         AudioBuffer buffer = inInputData->mBuffers[i];
         float* audioData = (float*)buffer.mData;
         UInt32 numSamples = buffer.mDataByteSize / sizeof(float);
-
-        {
-            std::lock_guard<std::mutex> lock(inputMutex);
-            inputBuffer.insert(inputBuffer.end(), audioData, audioData + numSamples);
-
-            size_t maxInput = static_cast<size_t>(8 * bufferSize);
-            if (inputBuffer.size() > maxInput) {
-                inputBuffer.erase(inputBuffer.begin(), inputBuffer.begin() + (inputBuffer.size() - maxInput));
-            }
-
-            if (inputBuffer.size() >= static_cast<size_t>(2 * bufferSize)) {
-                processCV.notify_one();
-            }
-        }
+        inputRing.write(audioData, numSamples);
     }
 
     return noErr;
@@ -690,14 +690,12 @@ OSStatus defaultDeviceIOProc(
         float* outputData = (float*)outBuffer.mData;
         UInt32 numSamples = outBuffer.mDataByteSize / sizeof(float);
 
-        std::lock_guard<std::mutex> lock(processMutex);
-        size_t toCopy = std::min<size_t>(numSamples, outputBuffer.size());
-        if (toCopy > 0) {
-            std::copy(outputBuffer.begin(), outputBuffer.begin() + toCopy, outputData);
-            outputBuffer.erase(outputBuffer.begin(), outputBuffer.begin() + toCopy);
-        } else {
-            std::memset(outputData, 0, outBuffer.mDataByteSize);
+        size_t got = outputRing.read(outputData, numSamples);
+        if (got < numSamples) {
+            std::fill(outputData + got, outputData + numSamples, lastOutSample);
         }
+        if (got > 0)
+            lastOutSample = outputData[got - 1];
     }
 
     return noErr;
