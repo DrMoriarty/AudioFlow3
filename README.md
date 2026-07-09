@@ -36,7 +36,7 @@ Remove `AudioFlow3.app` from your `/Application` directory as usual. Remove `Bla
 Or use `brew uninstall audioflow` if you used brew for installation.
 
 ## User Interface
-<img src="ui.png" width="320">
+<img src="ui.png" width="600">
 
 ## Signal Chain
 
