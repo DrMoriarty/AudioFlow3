@@ -12,10 +12,10 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
-          version: '6.8.2'
+          version: '6.5.3'
           target: 'desktop'
           host: 'mac'
-          arch: 'clang_64'
+          arch: 'macos'
 
       - name: Build
         run: |
@@ -45,10 +45,10 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
-          version: '6.8.2'
+          version: '6.5.3'
           target: 'desktop'
           host: 'mac'
-          arch: 'clang_64'
+          arch: 'macos'
 
       - name: Build
         run: |
