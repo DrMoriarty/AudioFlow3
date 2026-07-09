@@ -25,15 +25,15 @@ Real-time audio processor for macOS that captures system audio via a virtual dri
 
 You can just download zip archive with latest version from https://github.com/DrMoriarty/AudioFlow3/releases
 
-Or run 'brew install --cask drmoriarty/audioflow/audioflow' It also installs 'blackhole-2ch' as a dependency.
+Or run `brew install --cask drmoriarty/audioflow/audioflow` It also installs `blackhole-2ch` as a dependency.
 
 Reboot the system. It is required by BlackHole driver.
 
 ## Uninstallation Instructions
 
-Remove 'AudioFlow3.app' from your '/Application' directory as usual. Remove 'BlackHole.driver' from '/Library/Audio/Plug-Ins/HAL/' if you dont need it.
+Remove `AudioFlow3.app` from your `/Application` directory as usual. Remove `BlackHole.driver` from `/Library/Audio/Plug-Ins/HAL/` if you dont need it.
 
-Or use 'brew uninstall audioflow' if you used brew for installation.
+Or use `brew uninstall audioflow` if you used brew for installation.
 
 ## User Interface
 <img src="ui.png" width="320">
