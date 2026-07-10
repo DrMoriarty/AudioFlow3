@@ -102,6 +102,10 @@ IRData readIRFile(const std::string &path, uint32_t deviceSampleRate) {
         chunk.data.resize(chunk.chunkSize);
         file.read(chunk.data.data(), chunk.chunkSize);
 
+        if (chunk.chunkSize % 2 != 0) {
+            file.seekg(1, std::ios::cur);
+        }
+
         chunks.push_back(chunk);
     }
 
@@ -120,7 +124,15 @@ IRData readIRFile(const std::string &path, uint32_t deviceSampleRate) {
 
                 bool isPCM = (audioFormat == 1);
                 bool isFloat = (audioFormat == 3);
+                bool isExtensible = (audioFormat == 0xFFFE);
                 bool validBits = (bitsPerSample == 16 || bitsPerSample == 24 || bitsPerSample == 32);
+
+                if (isExtensible && chunk.data.size() >= 40) {
+                    uint16_t subFormat;
+                    std::memcpy(&subFormat, chunk.data.data() + 24, 2);
+                    isPCM = (subFormat == 1);
+                    isFloat = (subFormat == 3);
+                }
 
                 if ((numChannels < 1 || numChannels > 2) || (!isPCM && !isFloat) || !validBits) {
                     std::cerr << "Only mono/stereo WAV files (16/24/32-bit PCM or 32-bit float) are supported." << std::endl;
