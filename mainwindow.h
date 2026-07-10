@@ -49,6 +49,8 @@ private:
     QTimer *m_ampAutoTimer = nullptr;
     QLabel *m_latencyLabel = nullptr;
     QLabel *m_processLabel = nullptr;
+    QWidget *m_vuL = nullptr;
+    QWidget *m_vuR = nullptr;
 
     static const int BAND_COUNT = 10;
     QSpinBox *m_eqHz[BAND_COUNT] = {};

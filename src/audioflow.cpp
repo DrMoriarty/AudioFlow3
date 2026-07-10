@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cmath>
 #include <queue>
 #include <functional>
 #include <future>
@@ -76,6 +77,8 @@ private:
 static const size_t RING_CAPACITY = 65536;
 RingBuffer outputRing(RING_CAPACITY);
 float lastOutSample = 0.0f;
+std::atomic<float> peakLevelL{-60.0f};
+std::atomic<float> peakLevelR{-60.0f};
 RingBuffer inputRing(RING_CAPACITY);
 
 Config* gConfig = nullptr;
@@ -590,6 +593,14 @@ float getProcessTimeMs() {
     return lastProcessMs.load(std::memory_order_relaxed);
 }
 
+float getPeakLevelL() {
+    return peakLevelL.exchange(-60.0f, std::memory_order_relaxed);
+}
+
+float getPeakLevelR() {
+    return peakLevelR.exchange(-60.0f, std::memory_order_relaxed);
+}
+
 void setUIExpandedCorrecting(bool expanded) {
     gConfig->uiExpandedCorrecting = expanded;
 }
@@ -658,6 +669,22 @@ void audioWorker() {
         lastProcessMs.store(prev * 0.95f + elapsed * 0.05f, std::memory_order_relaxed);
 
         outputRing.write(chunk.data(), chunkSize);
+
+        float lPeak = 0.0f, rPeak = 0.0f;
+        for (size_t s = 0; s + 1 < chunkSize; s += 2) {
+            float lv = std::abs(chunk[s]);
+            float rv = std::abs(chunk[s + 1]);
+            if (lv > lPeak) lPeak = lv;
+            if (rv > rPeak) rPeak = rv;
+        }
+        float lDb = lPeak > 0.0f ? 20.0f * std::log10(lPeak) : -60.0f;
+        float rDb = rPeak > 0.0f ? 20.0f * std::log10(rPeak) : -60.0f;
+        if (lDb < -60.0f) lDb = -60.0f;
+        if (rDb < -60.0f) rDb = -60.0f;
+        float prevL = peakLevelL.load(std::memory_order_relaxed);
+        while (lDb > prevL && !peakLevelL.compare_exchange_weak(prevL, lDb, std::memory_order_relaxed)) {}
+        float prevR = peakLevelR.load(std::memory_order_relaxed);
+        while (rDb > prevR && !peakLevelR.compare_exchange_weak(prevR, rDb, std::memory_order_relaxed)) {}
     }
 }
 
@@ -689,6 +716,7 @@ OSStatus defaultDeviceIOProc(
         const AudioTimeStamp* inOutputTime,
         void* inClientData
 ) {
+    float localPeak[2] = {0.0f, 0.0f};
     for (size_t i = 0; i < outOutputData->mNumberBuffers; ++i) {
         AudioBuffer outBuffer = outOutputData->mBuffers[i];
         float* outputData = (float*)outBuffer.mData;

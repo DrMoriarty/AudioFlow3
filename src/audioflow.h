@@ -28,6 +28,8 @@ void setEqualizerPreset(const std::string& name);
 void setBufferSize(int newBufSize);
 float getLatencyMs();
 float getProcessTimeMs();
+float getPeakLevelL();
+float getPeakLevelR();
 
 void setUIExpandedCorrecting(bool expanded);
 void setUIExpandedPreamplifier(bool expanded);

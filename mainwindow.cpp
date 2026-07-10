@@ -33,6 +33,30 @@
 #include <QColor>
 
 #include <QStatusBar>
+#include <QPainter>
+
+class VuBar : public QWidget {
+public:
+    explicit VuBar(QWidget *parent = nullptr) : QWidget(parent) {
+        setFixedSize(8, 24);
+    }
+    void setLevel(float db) {
+        float clamped = qBound(-30.0f, db, 0.0f);
+        m_level = (clamped + 30.0f) / 30.0f;
+        update();
+    }
+protected:
+    void paintEvent(QPaintEvent *) override {
+        QPainter p(this);
+        p.fillRect(rect(), QColor(30, 30, 30));
+        int h = static_cast<int>(m_level * height());
+        if (h > 0) {
+            p.fillRect(0, height() - h, width(), h, QColor(60, 200, 60));
+        }
+    }
+private:
+    float m_level = 0.0f;
+};
 
 MainWindow::MainWindow(const Config &config, QWidget *parent)
     : QMainWindow(parent)
@@ -44,9 +68,22 @@ MainWindow::MainWindow(const Config &config, QWidget *parent)
 
     m_latencyLabel = new QLabel();
     m_processLabel = new QLabel();
+    m_vuL = new VuBar();
+    m_vuR = new VuBar();
+    statusBar()->addWidget(new QLabel(" L"));
+    statusBar()->addWidget(m_vuL);
+    statusBar()->addWidget(m_vuR);
+    statusBar()->addWidget(new QLabel("R "));
     statusBar()->addPermanentWidget(m_processLabel);
     statusBar()->addPermanentWidget(m_latencyLabel);
-    statusBar()->setStyleSheet("QStatusBar{border-top:1px solid rgb(60,60,60);}");
+    statusBar()->setStyleSheet("QStatusBar{border-top:1px solid rgb(60,60,60);} QLabel{font-size:10px;}");
+
+    auto *vuTimer = new QTimer(this);
+    connect(vuTimer, &QTimer::timeout, this, [this]() {
+        static_cast<VuBar*>(m_vuL)->setLevel(getPeakLevelL());
+        static_cast<VuBar*>(m_vuR)->setLevel(getPeakLevelR());
+    });
+    vuTimer->start(50);
 
     auto *statusTimer = new QTimer(this);
     connect(statusTimer, &QTimer::timeout, this, [this]() {
@@ -54,6 +91,7 @@ MainWindow::MainWindow(const Config &config, QWidget *parent)
         m_processLabel->setText(QString("Process: %1 ms").arg(getProcessTimeMs(), 0, 'f', 2));
     });
     statusTimer->start(1000);
+
     m_latencyLabel->setText(QString("Latency: %1 ms").arg(getLatencyMs(), 0, 'f', 1));
     m_processLabel->setText(QString("Process: %1 ms").arg(getProcessTimeMs(), 0, 'f', 2));
 }
