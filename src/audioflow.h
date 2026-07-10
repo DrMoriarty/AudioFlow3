@@ -24,6 +24,7 @@ void setAmplifierGain(float gain);
 void setAmplifierAuto(bool enabled);
 float getAmplifierAutoGainValue();
 void setEqualizerBand(int index, float f, float q, float g);
+void setEqualizerPreset(const std::string& name);
 void setBufferSize(int newBufSize);
 float getLatencyMs();
 float getProcessTimeMs();

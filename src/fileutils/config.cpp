@@ -8,6 +8,11 @@
 using json = nlohmann::json;
 
 Config::Config(const std::string& configPath) : configFilePath(configPath) {
+    auto pos = configPath.rfind('/');
+    if (pos != std::string::npos)
+        customPresetsDirPath = configPath.substr(0, pos) + "/eq_presets";
+    else
+        customPresetsDirPath = "eq_presets";
     ampToggle = false;
     ampAuto = false;
     ampGain = 0.0f;
@@ -16,6 +21,7 @@ Config::Config(const std::string& configPath) : configFilePath(configPath) {
     equalizerF = {60.0f, 170.0f, 310.0f, 600.0f, 1000.0f, 3000.0f, 6000.0f, 12000.0f, 14000.0f, 16000.0f};
     equalizerQ = {1.41f, 1.41f, 1.41f, 1.41f, 1.41f, 1.41f, 1.41f, 1.41f, 1.41f, 1.41f};
     equalizerG = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+    equalizerPreset = "";
 
     reverbToggle = false;
     reverbDryWet = 0.0f;
@@ -55,6 +61,7 @@ bool Config::loadConfig() {
     std::vector<float> equalizerF = data.at("equalizer").at("f").get<std::vector<float>>();
     std::vector<float> equalizerQ = data.at("equalizer").at("q").get<std::vector<float>>();
     std::vector<float> equalizerG = data.at("equalizer").at("g").get<std::vector<float>>();
+    std::string equalizerPreset = data.contains("equalizer") && data["equalizer"].contains("preset") ? data["equalizer"]["preset"].get<std::string>() : "";
 
     bool reverbToggle = data.at("reverb").at("toggle").get<bool>();
     float reverbDryWet = data.at("reverb").at("dw").get<float>();
@@ -74,7 +81,7 @@ bool Config::loadConfig() {
     bool uiExpandedReverb = data.contains("ui") && data["ui"].contains("expanded") && data["ui"]["expanded"].contains("reverb") ? data["ui"]["expanded"]["reverb"].get<bool>() : false;
     bool uiExpandedSettings = data.contains("ui") && data["ui"].contains("expanded") && data["ui"]["expanded"].contains("settings") ? data["ui"]["expanded"]["settings"].get<bool>() : false;
 
-    if (ampToggle != this->ampToggle || ampAuto != this->ampAuto || ampGain != this->ampGain || equalizerToggle != this->equalizerToggle || equalizerF != this->equalizerF || equalizerQ != this->equalizerQ || equalizerG != this->equalizerG || reverbToggle != this->reverbToggle || reverbDryWet != this->reverbDryWet || irFilePath != this->irFilePath || correctionToggle != this->correctionToggle || correctionDryWet != this->correctionDryWet || correctionIRFilePath != this->correctionIRFilePath || correctionPostGain != this->correctionPostGain || bufferSize != this->bufferSize || uiExpandedCorrecting != this->uiExpandedCorrecting || uiExpandedPreamplifier != this->uiExpandedPreamplifier || uiExpandedEqualizer != this->uiExpandedEqualizer || uiExpandedReverb != this->uiExpandedReverb || uiExpandedSettings != this->uiExpandedSettings || correctionRecent != this->correctionRecent) {
+    if (ampToggle != this->ampToggle || ampAuto != this->ampAuto || ampGain != this->ampGain || equalizerToggle != this->equalizerToggle || equalizerF != this->equalizerF || equalizerQ != this->equalizerQ || equalizerG != this->equalizerG || equalizerPreset != this->equalizerPreset || reverbToggle != this->reverbToggle || reverbDryWet != this->reverbDryWet || irFilePath != this->irFilePath || correctionToggle != this->correctionToggle || correctionDryWet != this->correctionDryWet || correctionIRFilePath != this->correctionIRFilePath || correctionPostGain != this->correctionPostGain || bufferSize != this->bufferSize || uiExpandedCorrecting != this->uiExpandedCorrecting || uiExpandedPreamplifier != this->uiExpandedPreamplifier || uiExpandedEqualizer != this->uiExpandedEqualizer || uiExpandedReverb != this->uiExpandedReverb || uiExpandedSettings != this->uiExpandedSettings || correctionRecent != this->correctionRecent) {
         this->ampToggle = ampToggle;
         this->ampAuto = ampAuto;
         this->ampGain = ampGain;
@@ -83,6 +90,7 @@ bool Config::loadConfig() {
         this->equalizerF = equalizerF;
         this->equalizerQ = equalizerQ;
         this->equalizerG = equalizerG;
+        this->equalizerPreset = equalizerPreset;
 
         this->reverbToggle = reverbToggle;
         this->reverbDryWet = reverbDryWet;
@@ -119,7 +127,8 @@ bool Config::saveConfig() {
             {"toggle", equalizerToggle},
             {"f", equalizerF},
             {"q", equalizerQ},
-            {"g", equalizerG}
+            {"g", equalizerG},
+            {"preset", equalizerPreset}
         }},
         {"reverb", {
             {"toggle", reverbToggle},

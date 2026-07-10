@@ -7,6 +7,7 @@
 #include <QDoubleSpinBox>
 #include <QTimer>
 #include <QLabel>
+#include <QComboBox>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -25,6 +26,8 @@ class MainWindow : public QMainWindow
 public:
     explicit MainWindow(const Config &config, QWidget *parent = nullptr);
     ~MainWindow() override;
+    MainWindow(const MainWindow&) = delete;
+    MainWindow& operator=(const MainWindow&) = delete;
 
 protected:
     void showEvent(QShowEvent *event) override;
@@ -52,5 +55,7 @@ private:
     QSlider *m_eqGain[BAND_COUNT] = {};
     QSpinBox *m_eqGainSpin[BAND_COUNT] = {};
     QDoubleSpinBox *m_eqQ[BAND_COUNT] = {};
+    QComboBox *m_eqPresetCombo = nullptr;
+    bool m_eqPresetLoading = false;
 };
 #endif // MAINWINDOW_H

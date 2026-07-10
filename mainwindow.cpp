@@ -18,6 +18,9 @@
 #include <QShowEvent>
 #include <QFileInfo>
 #include <QDir>
+#include <QInputDialog>
+#include <QLineEdit>
+#include <QJsonDocument>
 #include <QCoreApplication>
 #include <QFileDialog>
 #include <QJsonDocument>
@@ -391,7 +394,10 @@ void MainWindow::setupBlocks()
 
     QLabel *presetLabel = new QLabel(tr("Preset"));
     eqLayout->addWidget(presetLabel);
+
     QComboBox *presetCombo = new QComboBox();
+    m_eqPresetCombo = presetCombo;
+
     QString eqBasePath = QCoreApplication::applicationDirPath() + "/../Resources/eq/";
     QDir eqDir(eqBasePath);
     if (eqDir.exists()) {
@@ -401,7 +407,36 @@ void MainWindow::setupBlocks()
         for (const auto &entry : eqDir.entryInfoList())
             presetCombo->addItem(entry.completeBaseName(), entry.filePath());
     }
-    eqLayout->addWidget(presetCombo);
+
+    QString customDir = QString::fromStdString(m_config.customPresetsDirPath);
+    QDir cDir(customDir);
+    if (cDir.exists()) {
+        cDir.setFilter(QDir::Files);
+        cDir.setNameFilters({"*.json"});
+        cDir.setSorting(QDir::Name);
+        for (const auto &entry : cDir.entryInfoList())
+            presetCombo->addItem(entry.completeBaseName(), entry.filePath());
+    }
+
+    QPushButton *savePresetBtn = new QPushButton(tr("Save"));
+    savePresetBtn->setFixedWidth(60);
+
+    QHBoxLayout *presetRow = new QHBoxLayout();
+    presetRow->setContentsMargins(0, 0, 0, 0);
+    presetRow->setSpacing(4);
+    presetRow->addWidget(presetCombo);
+    presetRow->addWidget(savePresetBtn);
+    eqLayout->addLayout(presetRow);
+
+    if (!m_config.equalizerPreset.empty()) {
+        QString activePreset = QString::fromStdString(m_config.equalizerPreset);
+        for (int i = 0; i < presetCombo->count(); ++i) {
+            if (presetCombo->itemText(i) == activePreset) {
+                presetCombo->setCurrentIndex(i);
+                break;
+            }
+        }
+    }
 
     QLabel *parametersLabel = new QLabel(tr("Parameters"));
     eqLayout->addWidget(parametersLabel);
@@ -491,12 +526,17 @@ void MainWindow::setupBlocks()
     eqLayout->addLayout(eqGrid);
 
     connect(presetCombo, &QComboBox::currentIndexChanged, this, [presetCombo, this](int index) {
+        m_eqPresetLoading = true;
         QString path = presetCombo->itemData(index).toString();
-        if (path.isEmpty())
+        if (path.isEmpty()) {
+            m_eqPresetLoading = false;
             return;
+        }
         QFile file(path);
-        if (!file.open(QIODevice::ReadOnly))
+        if (!file.open(QIODevice::ReadOnly)) {
+            m_eqPresetLoading = false;
             return;
+        }
         QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
         QJsonObject obj = doc.object();
         QJsonArray fArr = obj["f"].toArray();
@@ -513,6 +553,51 @@ void MainWindow::setupBlocks()
             if (i < qArr.size())
                 m_eqQ[i]->setValue(qArr[i].toDouble());
         }
+        setEqualizerPreset(presetCombo->currentText().toStdString());
+        m_eqPresetLoading = false;
+    });
+
+    connect(savePresetBtn, &QPushButton::clicked, this, [presetCombo, this]() {
+        bool ok;
+        QString name = QInputDialog::getText(this, tr("Save Preset"),
+            tr("Preset name:"), QLineEdit::Normal, QString(), &ok);
+        if (!ok || name.trimmed().isEmpty())
+            return;
+        name = name.trimmed();
+
+        QJsonObject obj;
+        QJsonArray fArr, qArr, gArr;
+        for (int i = 0; i < BAND_COUNT; ++i) {
+            fArr.append(m_eqHz[i]->value());
+            qArr.append(m_eqQ[i]->value());
+            gArr.append(m_eqGain[i]->value());
+        }
+        obj["f"] = fArr;
+        obj["q"] = qArr;
+        obj["g"] = gArr;
+
+        QString dirPath = QString::fromStdString(getConfig().customPresetsDirPath);
+        QDir().mkpath(dirPath);
+        QString filePath = dirPath + "/" + name + ".json";
+        QFile file(filePath);
+        if (!file.open(QIODevice::WriteOnly))
+            return;
+        file.write(QJsonDocument(obj).toJson(QJsonDocument::Compact));
+
+        bool found = false;
+        for (int i = 0; i < presetCombo->count(); ++i) {
+            if (presetCombo->itemData(i).toString() == filePath) {
+                presetCombo->setItemText(i, name);
+                presetCombo->setCurrentIndex(i);
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            presetCombo->addItem(name, filePath);
+            presetCombo->setCurrentIndex(presetCombo->count() - 1);
+        }
+        setEqualizerPreset(name.toStdString());
     });
 
     int eqContentH = eqLayout->contentsMargins().top() + eqLayout->contentsMargins().bottom();
@@ -541,9 +626,39 @@ void MainWindow::setupBlocks()
         setEqualizerBand(i, f, q, g);
     };
     for (int i = 0; i < BAND_COUNT; ++i) {
-        connect(m_eqHz[i], &QSpinBox::valueChanged, this, [syncBand, i]()  { syncBand(i); });
-        connect(m_eqGainSpin[i], &QSpinBox::valueChanged, this, [syncBand, i]() { syncBand(i); });
-        connect(m_eqQ[i], QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [syncBand, i]() { syncBand(i); });
+        connect(m_eqHz[i], &QSpinBox::valueChanged, this, [syncBand, presetCombo, i, this]() {
+            syncBand(i);
+            if (!m_eqPresetLoading) {
+                presetCombo->blockSignals(true);
+                presetCombo->setCurrentIndex(-1);
+                presetCombo->blockSignals(false);
+                if (!getConfig().equalizerPreset.empty()) {
+                    setEqualizerPreset("");
+                }
+            }
+        });
+        connect(m_eqGainSpin[i], &QSpinBox::valueChanged, this, [syncBand, presetCombo, i, this]() {
+            syncBand(i);
+            if (!m_eqPresetLoading) {
+                presetCombo->blockSignals(true);
+                presetCombo->setCurrentIndex(-1);
+                presetCombo->blockSignals(false);
+                if (!getConfig().equalizerPreset.empty()) {
+                    setEqualizerPreset("");
+                }
+            }
+        });
+        connect(m_eqQ[i], QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [syncBand, presetCombo, i, this]() {
+            syncBand(i);
+            if (!m_eqPresetLoading) {
+                presetCombo->blockSignals(true);
+                presetCombo->setCurrentIndex(-1);
+                presetCombo->blockSignals(false);
+                if (!getConfig().equalizerPreset.empty()) {
+                    setEqualizerPreset("");
+                }
+            }
+        });
     }
 
     QWidget *convolverContent = new QWidget();

@@ -554,6 +554,10 @@ void setEqualizerBand(int index, float f, float q, float g) {
     }
 }
 
+void setEqualizerPreset(const std::string& name) {
+    gConfig->equalizerPreset = name;
+}
+
 void setBufferSize(int newBufSize) {
     static const int allowed[] = {64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384};
     bool valid = false;
@@ -710,8 +714,9 @@ bool initialize(const std::string& configPath) {
     std::map<UInt32, std::string> ad = getAudioDevices();
     for (auto const& [key, val] : ad) {
         if (val == driver || val == driver2) {
-	    driverID = key;
-	}
+            driverID = key;
+            break;
+        }
     }
     if (driverID == 0) {
         // Driver not installed in OS. Fault.

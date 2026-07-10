@@ -16,6 +16,7 @@ public:
     bool saveConfig();
 
     std::string configFilePath;
+    std::string customPresetsDirPath;
 
     bool ampToggle;
     bool ampAuto;
@@ -25,6 +26,7 @@ public:
     std::vector<float> equalizerF;
     std::vector<float> equalizerQ;
     std::vector<float> equalizerG;
+    std::string equalizerPreset;
 
     bool reverbToggle;
     float reverbDryWet;
