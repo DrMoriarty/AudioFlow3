@@ -12,6 +12,7 @@ ConvolutionReverb::ConvolutionReverb(bool toggle, std::string path, double dryWe
     paddedSize = chunkSize * 2;
     numBins = paddedSize / 2;
     numChunks = 0;
+    irDurationSec = 0.0f;
 
     IRData irData;
     irData.sampleRate = 0;
@@ -24,6 +25,7 @@ ConvolutionReverb::ConvolutionReverb(bool toggle, std::string path, double dryWe
 
     if (!irData.audioDataL.empty() && !irData.audioDataR.empty()) {
         numChunks = static_cast<size_t>(std::ceil(static_cast<float>(irData.audioDataL.size()) / chunkSize));
+        irDurationSec = static_cast<float>(irData.audioDataL.size()) / deviceSampleRate;
 
         irData.audioDataL.resize(numChunks * chunkSize, 0.0f);
         irData.audioDataR.resize(numChunks * chunkSize, 0.0f);

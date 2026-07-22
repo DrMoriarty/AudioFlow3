@@ -31,6 +31,14 @@ float getProcessTimeMs();
 float getPeakLevelL();
 float getPeakLevelR();
 
+struct IRStatusInfo {
+    bool hasFile;
+    bool loaded;
+    float duration;
+};
+IRStatusInfo getCorrectionIRStatus();
+IRStatusInfo getReverbIRStatus();
+
 void setUIExpandedCorrecting(bool expanded);
 void setUIExpandedPreamplifier(bool expanded);
 void setUIExpandedEqualizer(bool expanded);

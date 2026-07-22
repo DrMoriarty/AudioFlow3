@@ -58,6 +58,38 @@ private:
     float m_level = 0.0f;
 };
 
+class LedIndicator : public QWidget {
+public:
+    enum State { None, Loaded, Error };
+    explicit LedIndicator(QWidget *parent = nullptr) : QWidget(parent) {
+        setFixedSize(12, 12);
+    }
+    void setState(State s, const QString &tooltip = {}) {
+        if (m_state == s && m_tooltip == tooltip) return;
+        m_state = s;
+        m_tooltip = tooltip;
+        setToolTip(tooltip);
+        update();
+    }
+protected:
+    void paintEvent(QPaintEvent *) override {
+        QPainter p(this);
+        p.setRenderHint(QPainter::Antialiasing);
+        QColor c;
+        switch (m_state) {
+            case Loaded: c = QColor(60, 200, 60); break;
+            case Error:  c = QColor(220, 50, 50); break;
+            default:     c = QColor(80, 80, 80); break;
+        }
+        p.setBrush(c);
+        p.setPen(QColor(40, 40, 40));
+        p.drawEllipse(1, 1, width() - 2, height() - 2);
+    }
+private:
+    State m_state = None;
+    QString m_tooltip;
+};
+
 MainWindow::MainWindow(const Config &config, QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -89,6 +121,24 @@ MainWindow::MainWindow(const Config &config, QWidget *parent)
     connect(statusTimer, &QTimer::timeout, this, [this]() {
         m_latencyLabel->setText(QString("Latency: %1 ms").arg(getLatencyMs(), 0, 'f', 1));
         m_processLabel->setText(QString("Process: %1 ms").arg(getProcessTimeMs(), 0, 'f', 2));
+        {
+            auto s = getCorrectionIRStatus();
+            if (!s.hasFile)
+                m_correctionLed->setState(LedIndicator::None);
+            else if (s.loaded)
+                m_correctionLed->setState(LedIndicator::Loaded, tr("Loaded file %1 s").arg(s.duration, 0, 'f', 2));
+            else
+                m_correctionLed->setState(LedIndicator::Error, tr("Error"));
+        }
+        {
+            auto s = getReverbIRStatus();
+            if (!s.hasFile)
+                m_reverbLed->setState(LedIndicator::None);
+            else if (s.loaded)
+                m_reverbLed->setState(LedIndicator::Loaded, tr("Loaded file %1 s").arg(s.duration, 0, 'f', 2));
+            else
+                m_reverbLed->setState(LedIndicator::Error, tr("Error"));
+        }
     });
     statusTimer->start(1000);
 
@@ -259,6 +309,8 @@ void MainWindow::setupBlocks()
     if (corrComboIndex >= 0)
         irCombo->setCurrentIndex(corrComboIndex);
     irLayout->addWidget(irCombo, 1);
+    m_correctionLed = new LedIndicator();
+    irLayout->addWidget(m_correctionLed);
     QPushButton *loadIrBtn = new QPushButton(tr("Load IR"));
     irLayout->addWidget(loadIrBtn);
     ccLayout->addLayout(irLayout);
@@ -739,6 +791,8 @@ void MainWindow::setupBlocks()
     });
 
     spaceRowLayout->addWidget(spaceCombo, 1);
+    m_reverbLed = new LedIndicator();
+    spaceRowLayout->addWidget(m_reverbLed);
     QPushButton *customBtn = new QPushButton(tr("Custom"));
 
     connect(customBtn, &QPushButton::clicked, this, [spaceCombo]() {

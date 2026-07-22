@@ -180,3 +180,19 @@ void Processing::setEqualizerBand(int index, float f, float q, float g) {
         filters[index].setGain(g);
     }
 }
+
+Processing::IRStatus Processing::getCorrectionIRStatus() const {
+    std::lock_guard<std::mutex> lock(const_cast<std::mutex&>(swapMutex));
+    bool hasFile = !correctionConvolver->path.empty();
+    bool loaded = correctionConvolver->getNumChunks() > 0;
+    float duration = correctionConvolver->getIRDurationSec();
+    return {hasFile, loaded, duration};
+}
+
+Processing::IRStatus Processing::getReverbIRStatus() const {
+    std::lock_guard<std::mutex> lock(const_cast<std::mutex&>(swapMutex));
+    bool hasFile = !convolutionReverb->path.empty();
+    bool loaded = convolutionReverb->getNumChunks() > 0;
+    float duration = convolutionReverb->getIRDurationSec();
+    return {hasFile, loaded, duration};
+}

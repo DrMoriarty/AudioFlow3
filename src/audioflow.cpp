@@ -601,6 +601,18 @@ float getPeakLevelR() {
     return peakLevelR.exchange(-60.0f, std::memory_order_relaxed);
 }
 
+IRStatusInfo getCorrectionIRStatus() {
+    std::lock_guard<std::mutex> lock(audioProcessorMutex);
+    auto s = audioProcessor->getCorrectionIRStatus();
+    return {s.hasFile, s.loaded, s.duration};
+}
+
+IRStatusInfo getReverbIRStatus() {
+    std::lock_guard<std::mutex> lock(audioProcessorMutex);
+    auto s = audioProcessor->getReverbIRStatus();
+    return {s.hasFile, s.loaded, s.duration};
+}
+
 void setUIExpandedCorrecting(bool expanded) {
     gConfig->uiExpandedCorrecting = expanded;
 }

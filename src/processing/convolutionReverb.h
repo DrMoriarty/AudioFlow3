@@ -28,6 +28,8 @@ public:
     void setPostGain(float postGainDb);
     float getPostGain();
     float getDeviceSampleRate() const;
+    size_t getNumChunks() const { return numChunks; }
+    float getIRDurationSec() const { return irDurationSec; }
 
     void process(std::vector<float>& input);
 private:
@@ -63,6 +65,7 @@ private:
     std::vector<float> overlapReverbR;
 
     size_t numChunks;
+    float irDurationSec;
 
     SplitComplex ifftTmp;
 

@@ -36,6 +36,14 @@ public:
     void setAmplifierAuto(bool enabled);
     float getAmplifierAutoGainValue();
     void setEqualizerBand(int index, float f, float q, float g);
+
+    struct IRStatus {
+        bool hasFile;
+        bool loaded;
+        float duration;
+    };
+    IRStatus getCorrectionIRStatus() const;
+    IRStatus getReverbIRStatus() const;
 private:
     double volume;
     float deviceSampleRate;

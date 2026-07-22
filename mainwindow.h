@@ -18,6 +18,7 @@ QT_END_NAMESPACE
 class CollapsibleBlock;
 class QWidget;
 class Config;
+class LedIndicator;
 
 class MainWindow : public QMainWindow
 {
@@ -51,6 +52,8 @@ private:
     QLabel *m_processLabel = nullptr;
     QWidget *m_vuL = nullptr;
     QWidget *m_vuR = nullptr;
+    LedIndicator *m_correctionLed = nullptr;
+    LedIndicator *m_reverbLed = nullptr;
 
     static const int BAND_COUNT = 10;
     QSpinBox *m_eqHz[BAND_COUNT] = {};
