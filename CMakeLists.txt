@@ -62,6 +62,7 @@ find_library(COREAUDIO_LIB CoreAudio)
 find_library(ACCELERATE_LIB Accelerate)
 find_library(AVFOUNDATION_LIB AVFoundation)
 find_library(FOUNDATION_LIB Foundation)
+find_package(SndFile REQUIRED)
 
 target_link_libraries(AudioFlow3
     PRIVATE
@@ -71,6 +72,7 @@ target_link_libraries(AudioFlow3
         ${ACCELERATE_LIB}
         ${AVFOUNDATION_LIB}
         ${FOUNDATION_LIB}
+        SndFile::sndfile
 )
 
 install(TARGETS AudioFlow3
