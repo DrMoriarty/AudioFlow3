@@ -44,5 +44,31 @@ void setUIExpandedPreamplifier(bool expanded);
 void setUIExpandedEqualizer(bool expanded);
 void setUIExpandedReverb(bool expanded);
 void setUIExpandedSettings(bool expanded);
+void setUIExpandedBinaural(bool expanded);
+
+void setBinauralToggle(bool toggle);
+void setBinauralDryWet(double dryWet);
+void setBinauralAngle(int angle);
+void setBinauralConfig(const std::string& config);
+void setBinauralElevation(int elevation);
+void setBinauralTargetDuration(float sec);
+void setBinauralRoom(const std::string& room, const std::string& configOverride = "");
+void setBinauralTrueStereo(bool enabled);
+std::vector<std::string> getBinauralRooms();
+
+struct RoomInfoData {
+    std::string id;
+    std::string name;
+    std::string location;
+    std::string type;
+    std::string dimensions;
+    std::string rt60;
+    std::string listener;
+    std::string sourceDistance;
+    std::string azimuthRange;
+    std::string elevationRange;
+    std::string measurementConfig;
+};
+std::vector<RoomInfoData> getRoomInfos();
 
 #endif //AUDIO_FLOW_H

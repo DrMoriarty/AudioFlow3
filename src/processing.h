@@ -10,6 +10,7 @@
 #include "./processing/amplifier.h"
 #include "./processing/equalizer.h"
 #include "./processing/convolutionReverb.h"
+#include "./processing/binauralRenderer.h"
 #include "./fileutils/config.h"
 #include "./fileutils/readIRFile.h"
 #include "./processing/smoother.h"
@@ -37,6 +38,16 @@ public:
     float getAmplifierAutoGainValue();
     void setEqualizerBand(int index, float f, float q, float g);
 
+    void setBinauralToggle(bool toggle);
+    void setBinauralDryWet(double dryWet);
+    void setBinauralAngle(int angle);
+    void setBinauralConfig(const std::string& config);
+    void setBinauralElevation(int elevation);
+    void setBinauralRoom(const std::string& room, const std::string& configOverride = "");
+    void setBinauralTrueStereo(bool enabled);
+    void setBinauralTargetDuration(float sec);
+    void processBinaural(std::vector<float>& buffer);
+
     struct IRStatus {
         bool hasFile;
         bool loaded;
@@ -52,6 +63,7 @@ private:
     std::shared_ptr<Equalizer> equalizer;
     std::shared_ptr<ConvolutionReverb> correctionConvolver;
     std::shared_ptr<ConvolutionReverb> convolutionReverb;
+    std::shared_ptr<BinauralRenderer> binauralRenderer;
     std::mutex swapMutex;
 };
 

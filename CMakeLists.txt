@@ -37,6 +37,8 @@ qt_add_executable(AudioFlow3
     src/processing/amplifier.h
     src/processing/convolutionReverb.cpp
     src/processing/convolutionReverb.h
+    src/processing/binauralRenderer.cpp
+    src/processing/binauralRenderer.h
     src/processing/equalizer.cpp
     src/processing/equalizer.h
     src/processing/iirFilter.cpp

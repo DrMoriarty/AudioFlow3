@@ -5,6 +5,8 @@
 #include "src/fileutils/config.h"
 #include "src/audioflow.h"
 
+#include <regex>
+#include <sstream>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QGridLayout>
@@ -230,6 +232,79 @@ void MainWindow::updateSliderColor(QSlider *slider)
     }
 }
 
+static QString matchConfigValue(const std::string& raw, const std::string& selCfg) {
+    QString q = QString::fromStdString(raw).trimmed();
+    if (q.isEmpty() || q == "N/A" || selCfg.empty()) return q == "N/A" ? QString() : q;
+
+    QString result;
+    bool matched = false;
+    QString bareValue;
+    int start = 0;
+    int depth = 0;
+
+    for (int i = 0; i < q.size() && !matched; ++i) {
+        if (q[i] == '(') ++depth;
+        else if (q[i] == ')') {
+            if (--depth == 0) {
+                int end = i + 1;
+                QString entry = q.mid(start, end - start).trimmed();
+                int firstParen = entry.indexOf('(');
+                bool isFirstEntry = (start == 0);
+                if (firstParen >= 0) {
+                    QString name = entry.left(firstParen);
+                    if (isFirstEntry) name = name.trimmed();
+                    else {
+                        name = name.trimmed();
+                        if (!name.isEmpty() && name[0] == QChar(',')) name = name.mid(1).trimmed();
+                    }
+                    int lastOpen = entry.lastIndexOf('(');
+                    int lastClose = entry.lastIndexOf(')');
+                    QString inside = entry.mid(lastOpen + 1, lastClose - lastOpen - 1).trimmed();
+                    QStringList cfgs = inside.split(',', Qt::SkipEmptyParts);
+                    bool found = false;
+                    for (QString& c : cfgs) {
+                        if (c.trimmed().toStdString() == selCfg) { found = true; break; }
+                    }
+                    if (found) {
+                        result = name;
+                        matched = true;
+                    }
+                }
+                if (!matched && firstParen < 0) bareValue = entry;
+                start = end;
+            }
+        } else if (q[i] == ',' && depth == 0) {
+            int end = i;
+            QString entry = q.mid(start, end - start).trimmed();
+            int firstParen = entry.indexOf('(');
+            bool isFirstEntry = (start == 0);
+            if (firstParen < 0) {
+                if (!entry.isEmpty()) bareValue = isFirstEntry ? entry : (bareValue.isEmpty() ? entry : bareValue);
+            }
+            start = i + 1;
+        }
+    }
+
+    if (!matched) {
+        if (start < q.size()) {
+            QString entry = q.mid(start).trimmed();
+            int firstParen = entry.indexOf('(');
+            bool isFirstEntry = (start == 0);
+            if (firstParen < 0) {
+                if (!entry.isEmpty()) bareValue = isFirstEntry ? entry : (bareValue.isEmpty() ? entry : bareValue);
+            }
+        }
+    }
+
+    if (matched) {
+        if (!result.isEmpty() && result[0] == QChar(',')) result = result.mid(1).trimmed();
+        return result;
+    }
+    if (!bareValue.isEmpty() && bareValue[0] == QChar(',')) bareValue = bareValue.mid(1).trimmed();
+    if (!bareValue.isEmpty()) return bareValue;
+    return QString();
+}
+
 void MainWindow::setupBlocks()
 {
     setFixedWidth(600);
@@ -245,6 +320,7 @@ void MainWindow::setupBlocks()
         tr("Preamplifier"),
         tr("Equalizer"),
         tr("Convolver"),
+        tr("Binaural Simulation"),
         tr("Settings")
     };
 
@@ -271,19 +347,21 @@ void MainWindow::setupBlocks()
                     case 1: setUIExpandedPreamplifier(isExpanded); break;
                     case 2: setUIExpandedEqualizer(isExpanded); break;
                     case 3: setUIExpandedReverb(isExpanded); break;
-                    case 4: setUIExpandedSettings(isExpanded); break;
+                    case 4: setUIExpandedBinaural(isExpanded); break;
+                    case 5: setUIExpandedSettings(isExpanded); break;
                 }
             }
         });
         mainLayout->addWidget(block);
         m_blocks.append(block);
-        if (i < 4)
+        if (i < 5)
             block->addToggleSwitch();
     }
     m_blocks[0]->setToggleChecked(m_config.correctionToggle);
     m_blocks[1]->setToggleChecked(m_config.ampToggle);
     m_blocks[2]->setToggleChecked(m_config.equalizerToggle);
     m_blocks[3]->setToggleChecked(m_config.reverbToggle);
+    m_blocks[4]->setToggleChecked(m_config.binauralToggle);
     m_blockCollapsedHeight = m_blocks[0]->headerHeight();
     m_expandedHeights.resize(m_blocks.size(), -1);
 
@@ -839,6 +917,431 @@ void MainWindow::setupBlocks()
         setReverbToggle(checked);
     });
 
+    QWidget *binauralContent = new QWidget();
+    QVBoxLayout *bnLayout = new QVBoxLayout(binauralContent);
+    bnLayout->setContentsMargins(8, 4, 8, 4);
+    bnLayout->setSpacing(4);
+
+    auto roomInfos = getRoomInfos();
+    std::sort(roomInfos.begin(), roomInfos.end(), [](const RoomInfoData& a, const RoomInfoData& b) {
+        if (a.type != b.type) return a.type < b.type;
+        return a.name < b.name;
+    });
+
+    QHBoxLayout *bnRoomLayout = new QHBoxLayout();
+    bnRoomLayout->setContentsMargins(0, 0, 0, 0);
+    bnRoomLayout->setSpacing(8);
+    QLabel *bnRoomLabel = new QLabel(tr("Room"));
+    bnRoomLayout->addWidget(bnRoomLabel);
+    QComboBox *bnRoomCombo = new QComboBox();
+
+    for (const auto& room : roomInfos) {
+        QString displayName = QString::fromStdString(room.name)
+            + ", " + QString::fromStdString(room.type);
+        bnRoomCombo->addItem(displayName, QString::fromStdString(room.id));
+    }
+    for (int i = 0; i < bnRoomCombo->count(); ++i) {
+        if (bnRoomCombo->itemData(i).toString().toStdString() == m_config.binauralRoom) {
+            bnRoomCombo->setCurrentIndex(i);
+            break;
+        }
+    }
+    bnRoomLayout->addWidget(bnRoomCombo, 1);
+    bnLayout->addLayout(bnRoomLayout);
+
+    QWidget *bnInfoWidget = new QWidget();
+    bnInfoWidget->setStyleSheet("background: rgba(255,255,255,0.04); border-radius: 4px;");
+    QGridLayout *bnGrid = new QGridLayout(bnInfoWidget);
+    bnGrid->setContentsMargins(8, 6, 8, 6);
+    bnGrid->setSpacing(2);
+
+    const QString lblSt = "font-size: 10px; color: #888;";
+    const QString valSt = "font-size: 11px; color: #ddd;";
+
+    auto makeValLbl = [&](const QString& st) {
+        QLabel *l = new QLabel();
+        l->setStyleSheet(st);
+        return l;
+    };
+
+    QLabel *lblLocation  = new QLabel("Room Location");   lblLocation->setStyleSheet(lblSt);
+    QLabel *lblType      = new QLabel("Room Type");       lblType->setStyleSheet(lblSt);
+    QLabel *lblDim       = new QLabel("Room Dimensions"); lblDim->setStyleSheet(lblSt);
+    QLabel *lblListener  = new QLabel("Listener");        lblListener->setStyleSheet(lblSt);
+
+    QLabel *valLocation = makeValLbl(valSt);
+    QLabel *valType     = makeValLbl(valSt);
+    QLabel *valDim      = makeValLbl(valSt);
+    QLabel *valListener = makeValLbl(valSt);
+
+    QLabel *lblRt60   = new QLabel("RT60");             lblRt60->setStyleSheet(lblSt);
+    QLabel *lblAz     = new QLabel("Azimuth Range");    lblAz->setStyleSheet(lblSt);
+    QLabel *lblDist   = new QLabel("Source Distance");  lblDist->setStyleSheet(lblSt);
+    QLabel *lblEl     = new QLabel("Elevation Range");  lblEl->setStyleSheet(lblSt);
+
+    QLabel *valRt60 = makeValLbl(valSt);
+    QLabel *valAz   = makeValLbl(valSt);
+    QLabel *valDist = makeValLbl(valSt);
+    QLabel *valEl   = makeValLbl(valSt);
+
+    int row = 0;
+    bnGrid->addWidget(lblLocation,  row, 0); bnGrid->addWidget(valLocation, row, 1, 1, 3); row++;
+    bnGrid->addWidget(lblType,      row, 0); bnGrid->addWidget(valType,     row, 1, 1, 3); row++;
+    bnGrid->addWidget(lblDim,       row, 0); bnGrid->addWidget(valDim,      row, 1, 1, 3); row++;
+    bnGrid->addWidget(lblListener,  row, 0); bnGrid->addWidget(valListener, row, 1, 1, 3); row++;
+
+    bnGrid->addItem(new QSpacerItem(1,8), row, 0, 1, 4); row++;
+
+    bnGrid->addWidget(lblDist, row, 0); bnGrid->addWidget(valDist, row, 1);
+    bnGrid->addWidget(lblRt60, row, 2); bnGrid->addWidget(valRt60, row, 3); row++;
+
+    bnGrid->addItem(new QSpacerItem(1,4), row, 0, 1, 4); row++;
+
+    bnGrid->addWidget(lblAz, row, 0); bnGrid->addWidget(valAz, row, 1);
+    bnGrid->addWidget(lblEl, row, 2); bnGrid->addWidget(valEl, row, 3); row++;
+
+    bnLayout->addWidget(bnInfoWidget);
+
+    // --- Config row ---
+    QHBoxLayout *bnCfgLayout = new QHBoxLayout();
+    bnCfgLayout->setContentsMargins(0, 0, 0, 0);
+    bnCfgLayout->setSpacing(8);
+    QLabel *bnCfgLabel = new QLabel("Configuration");
+    bnCfgLayout->addWidget(bnCfgLabel);
+    QComboBox *bnCfgCombo = new QComboBox();
+    bnCfgLayout->addWidget(bnCfgCombo);
+    bnCfgLayout->addStretch();
+    QCheckBox *bnTrueStereo = new QCheckBox("True Stereo");
+    bnCfgLayout->addWidget(bnTrueStereo);
+    bnCfgLayout->addStretch();
+    bnLayout->addLayout(bnCfgLayout);
+
+    // --- Elevation row (form-style) ---
+    QHBoxLayout *bnElRowLayout = new QHBoxLayout();
+    bnElRowLayout->setContentsMargins(0, 0, 0, 0);
+    bnElRowLayout->setSpacing(8);
+    QLabel *bnElLabel = new QLabel("Elevation:");
+    int colLabelW  = bnElLabel->fontMetrics().horizontalAdvance("Elevation:") + 10;
+    int colValW    = bnElLabel->fontMetrics().horizontalAdvance("999°") + 2;
+    int colMinW    = bnElLabel->fontMetrics().horizontalAdvance("-99°") + 2;
+    int colMaxW    = colMinW;
+
+    bnElLabel->setMinimumWidth(colLabelW);
+    bnElRowLayout->addWidget(bnElLabel, 0, Qt::AlignVCenter);
+
+    QLabel *bnElValue = new QLabel("0°");
+    bnElValue->setMinimumWidth(colValW);
+    bnElValue->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
+    bnElRowLayout->addWidget(bnElValue, 0, Qt::AlignVCenter);
+    bnElRowLayout->addSpacing(8);
+    QLabel *bnElMin = new QLabel();
+    bnElMin->setMinimumWidth(colMinW);
+    bnElMin->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    bnElRowLayout->addWidget(bnElMin, 0, Qt::AlignVCenter);
+    QSlider *bnElSlider = new QSlider(Qt::Horizontal);
+    bnElSlider->setTickPosition(QSlider::TicksBelow);
+    bnElSlider->setSingleStep(15);
+    bnElSlider->setPageStep(15);
+    bnElSlider->setTickInterval(15);
+    bnElRowLayout->addWidget(bnElSlider, 1, Qt::AlignVCenter);
+    QLabel *bnElMax = new QLabel();
+    bnElMax->setMinimumWidth(colMaxW);
+    bnElMax->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
+    bnElRowLayout->addWidget(bnElMax, 0, Qt::AlignVCenter);
+    bnLayout->addLayout(bnElRowLayout);
+
+    auto updateRoomInfo = [bnRoomCombo, bnCfgCombo, roomInfos,
+        valLocation, valType, valDim, valListener, valRt60, valAz, valDist, valEl]() {
+        std::string roomId = bnRoomCombo->currentData().toString().toStdString();
+        std::string selCfg = bnCfgCombo->currentText().toStdString();
+        auto it = std::find_if(roomInfos.begin(), roomInfos.end(),
+            [&](const RoomInfoData& r){ return r.id == roomId; });
+        if (it == roomInfos.end()) return;
+        const auto& r = *it;
+        auto sv = [](const std::string& v, const std::string& cfg, const std::string& suffix = {}) -> QString {
+            QString m = matchConfigValue(v, cfg);
+            if (m.isEmpty()) return QString();
+            return suffix.empty() ? m : m + " " + QString::fromStdString(suffix);
+        };
+        auto showOrHide = [](QLabel* val, QLabel* lbl, const QString& s) {
+            if (s.isEmpty()) { if (lbl) lbl->hide(); val->hide(); return; }
+            if (lbl) lbl->show(); val->show();
+            val->setText(s);
+        };
+        showOrHide(valLocation, nullptr, sv(r.location, selCfg));
+        showOrHide(valType,     nullptr, sv(r.type, selCfg));
+        showOrHide(valDim,      nullptr, sv(r.dimensions, selCfg, "m"));
+        showOrHide(valListener, nullptr, sv(r.listener, selCfg));
+        showOrHide(valRt60,     nullptr, sv(r.rt60, selCfg, "s"));
+        showOrHide(valAz,       nullptr, sv(r.azimuthRange, selCfg));
+        showOrHide(valDist,     nullptr, sv(r.sourceDistance, selCfg, "m"));
+        showOrHide(valEl,       nullptr, sv(r.elevationRange, selCfg));
+    };
+
+    auto updateConfigOptions = [bnCfgCombo, bnCfgLabel, roomInfos, bnRoomCombo]() {
+        std::string roomId = bnRoomCombo->currentData().toString().toStdString();
+        auto it = std::find_if(roomInfos.begin(), roomInfos.end(),
+            [&](const RoomInfoData& r){ return r.id == roomId; });
+        if (it == roomInfos.end()) return;
+        bnCfgCombo->blockSignals(true);
+        bnCfgCombo->clear();
+        if (!it->measurementConfig.empty() && it->measurementConfig != "N/A") {
+            std::stringstream ss(it->measurementConfig);
+            std::string item;
+            while (std::getline(ss, item, ',')) {
+                auto pos = item.find_first_not_of(" \t");
+                if (pos != std::string::npos) item = item.substr(pos);
+                auto posEnd = item.find_last_not_of(" \t\"\n\r");
+                if (posEnd != std::string::npos) item = item.substr(0, posEnd + 1);
+                if (!item.empty()) bnCfgCombo->addItem(QString::fromStdString(item));
+            }
+        } else {
+            bnCfgCombo->addItem("C1");
+        }
+        bnCfgCombo->blockSignals(false);
+        bool multipleCfg = bnCfgCombo->count() > 1;
+        bnCfgCombo->setEnabled(multipleCfg);
+        bnCfgLabel->setEnabled(multipleCfg);
+    };
+
+    auto updateElevationRange = [roomInfos, bnRoomCombo, bnCfgCombo, bnElSlider, bnElMin, bnElValue, bnElMax, bnElLabel]() {
+        std::string roomId = bnRoomCombo->currentData().toString().toStdString();
+        std::string selCfg = bnCfgCombo->currentText().toStdString();
+        auto it = std::find_if(roomInfos.begin(), roomInfos.end(),
+            [&](const RoomInfoData& r){ return r.id == roomId; });
+        if (it == roomInfos.end()) return;
+        int degMin = 0, degMax = 0;
+        QString qs = matchConfigValue(it->elevationRange, selCfg);
+        std::string s = qs.toStdString();
+        if (!s.empty() && s != "N/A") {
+            int absVal = 0;
+            std::smatch m;
+            if (std::regex_search(s, m, std::regex("±(\\d+)")))
+                absVal = std::stoi(m[1].str());
+            else if (std::regex_search(s, m, std::regex("[+-]?(\\d+)\\s*°")))
+                absVal = std::stoi(m[1].str());
+            if (absVal > 0) { degMin = -absVal; degMax = absVal; }
+        }
+        bool hasRange = (degMin != degMax);
+        bnElSlider->blockSignals(true);
+        bnElSlider->setRange(degMin, degMax);
+        bnElSlider->setSingleStep(15);
+        bnElSlider->setPageStep(15);
+        bnElSlider->setTickInterval(15);
+        bnElSlider->setValue((degMin + degMax) / 2);
+        bnElSlider->blockSignals(false);
+        bnElSlider->setEnabled(hasRange);
+        bnElLabel->setEnabled(hasRange);
+        bnElMin->setEnabled(hasRange);
+        bnElMax->setEnabled(hasRange);
+        bnElValue->setEnabled(hasRange);
+        bnElMin->setText(hasRange ? QString::number(degMin) + "°" : "0°");
+        bnElMax->setText(hasRange ? QString::number(degMax) + "°" : "0°");
+        bnElValue->setText(hasRange ? QString::number(bnElSlider->value()) + "°" : "0°");
+    };
+
+    // --- Position (azimuth) slider — 0 to max azimuth parsed from room's CSV ---
+    QLabel *bnAngleMin = new QLabel("0°");
+    QLabel *bnAngleMax = new QLabel("180°");
+    QLabel *bnAngleValue = new QLabel();
+    QSlider *bnAngleSlider = new QSlider(Qt::Horizontal);
+    bnAngleSlider->setSingleStep(5);
+    bnAngleSlider->setPageStep(5);
+    bnAngleSlider->setTickInterval(5);
+    bnAngleSlider->setTickPosition(QSlider::TicksBelow);
+
+    auto updateAngleRange = [bnAngleSlider, bnAngleValue, bnAngleMin, bnAngleMax, bnRoomCombo, roomInfos]() {
+        int maxAz = 150;
+        std::string roomId = bnRoomCombo->currentData().toString().toStdString();
+        auto it = std::find_if(roomInfos.begin(), roomInfos.end(),
+            [&](const RoomInfoData& r){ return r.id == roomId; });
+        if (it != roomInfos.end()) {
+            std::string az = it->azimuthRange;
+            std::smatch m;
+            if (std::regex_search(az, m, std::regex("±(\\d+)")))
+                maxAz = std::stoi(m[1].str());
+            else if (std::regex_search(az, m, std::regex("[+-]?(\\d+)\\s*°")))
+                maxAz = std::stoi(m[1].str());
+        }
+        bnAngleSlider->blockSignals(true);
+        bnAngleSlider->setRange(0, maxAz);
+        bnAngleSlider->setValue(std::clamp(bnAngleSlider->value(), 0, maxAz));
+        bnAngleSlider->blockSignals(false);
+        bnAngleValue->setText(QString::number(bnAngleSlider->value()) + "°");
+        bnAngleMax->setText(QString::number(maxAz) + "°");
+    };
+
+    updateConfigOptions();
+    updateRoomInfo();
+    updateElevationRange();
+    updateAngleRange();
+
+    connect(bnElSlider, &QSlider::valueChanged, this, [bnElSlider, bnElValue](int v) {
+        int snapped = static_cast<int>(std::round(v / 15.0)) * 15;
+        if (snapped != v) {
+            QSignalBlocker blocker(bnElSlider);
+            bnElSlider->setValue(snapped);
+        }
+        bnElValue->setText(QString::number(snapped) + "°");
+        setBinauralElevation(snapped);
+    });
+
+    connect(bnCfgCombo, &QComboBox::currentIndexChanged, this, [bnCfgCombo, updateRoomInfo, updateElevationRange, updateAngleRange]() {
+        updateRoomInfo();
+        updateElevationRange();
+        updateAngleRange();
+        QString cfg = bnCfgCombo->currentText();
+        if (!cfg.isEmpty()) setBinauralConfig(cfg.toStdString());
+    });
+
+    bnAngleSlider->setValue(static_cast<int>(std::round(m_config.binauralAngle / 5.0)) * 5);
+    connect(bnAngleSlider, &QSlider::valueChanged, this, [bnAngleSlider, bnAngleValue](int v) {
+        int snapped = static_cast<int>(std::round(v / 5.0)) * 5;
+        if (snapped != v) {
+            QSignalBlocker blocker(bnAngleSlider);
+            bnAngleSlider->setValue(snapped);
+        }
+        bnAngleValue->setText(QString::number(snapped) + "°");
+        setBinauralAngle(snapped);
+    });
+    bnAngleValue->setText(QString::number(bnAngleSlider->value()) + "°");
+
+    QHBoxLayout *bnAngleLayout = new QHBoxLayout();
+    bnAngleLayout->setContentsMargins(0, 0, 0, 0);
+    bnAngleLayout->setSpacing(8);
+    QLabel *bnAngleLabel = new QLabel(tr("Azimuth:"));
+    bnAngleLabel->setMinimumWidth(colLabelW);
+    bnAngleLayout->addWidget(bnAngleLabel, 0, Qt::AlignVCenter);
+    bnAngleValue->setMinimumWidth(colValW);
+    bnAngleValue->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
+    bnAngleLayout->addWidget(bnAngleValue, 0, Qt::AlignVCenter);
+    bnAngleLayout->addSpacing(8);
+    bnAngleMin->setMinimumWidth(colMinW);
+    bnAngleMin->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    bnAngleLayout->addWidget(bnAngleMin, 0, Qt::AlignVCenter);
+    bnAngleLayout->addWidget(bnAngleSlider, 1, Qt::AlignVCenter);
+    bnAngleMax->setMinimumWidth(colMaxW);
+    bnAngleMax->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
+    bnAngleLayout->addWidget(bnAngleMax, 0, Qt::AlignVCenter);
+    bnLayout->addLayout(bnAngleLayout);
+
+    m_blocks[4]->setContentWidget(binauralContent);
+
+    connect(bnRoomCombo, &QComboBox::currentIndexChanged, this,
+        [bnRoomCombo, bnAngleSlider, bnElSlider, bnElLabel, bnElMin, bnElMax, bnElValue,
+         bnAngleLabel, bnAngleMin, bnAngleMax, bnAngleValue, bnTrueStereo,
+         updateRoomInfo, updateConfigOptions, updateElevationRange, updateAngleRange, bnCfgCombo, roomInfos]() {
+        QString room = bnRoomCombo->currentData().toString();
+        updateConfigOptions();
+        if (!room.isEmpty()) {
+            QString cfg = bnCfgCombo->currentText();
+            setBinauralRoom(room.toStdString(), cfg.toStdString());
+        }
+        updateAngleRange();
+        updateRoomInfo();
+        updateElevationRange();
+        if (bnTrueStereo->isChecked()) {
+            bnElSlider->setEnabled(false);
+            bnElLabel->setEnabled(false);
+            bnElMin->setEnabled(false);
+            bnElMax->setEnabled(false);
+            bnElValue->setEnabled(false);
+            bnAngleSlider->setEnabled(false);
+            bnAngleLabel->setEnabled(false);
+            bnAngleMin->setEnabled(false);
+            bnAngleMax->setEnabled(false);
+            bnAngleValue->setEnabled(false);
+        }
+    });
+
+    // Restore saved room → config → elevation → angle from config
+    {
+        for (int i = 0; i < bnRoomCombo->count(); ++i) {
+            if (bnRoomCombo->itemData(i).toString().toStdString() == m_config.binauralRoom) {
+                bnRoomCombo->setCurrentIndex(i);
+                break;
+            }
+        }
+        for (int i = 0; i < bnCfgCombo->count(); ++i) {
+            if (bnCfgCombo->itemText(i).toStdString() == m_config.binauralConfig) {
+                bnCfgCombo->setCurrentIndex(i);
+                break;
+            }
+        }
+        {
+            std::string roomId = m_config.binauralRoom;
+            std::string cfg = m_config.binauralConfig;
+            auto it = std::find_if(roomInfos.begin(), roomInfos.end(),
+                [&](const RoomInfoData& r){ return r.id == roomId; });
+            if (it != roomInfos.end()) {
+                QString qs = matchConfigValue(it->elevationRange, cfg);
+                std::string s = qs.toStdString();
+                if (!s.empty() && s != "N/A") {
+                    int absVal = 0;
+                    std::smatch m;
+                    if (std::regex_search(s, m, std::regex("±(\\d+)")))
+                        absVal = std::stoi(m[1].str());
+                    else if (std::regex_search(s, m, std::regex("[+-]?(\\d+)\\s*°")))
+                        absVal = std::stoi(m[1].str());
+                    if (absVal > 0) {
+                        int degMin = -absVal;
+                        int degMax = absVal;
+                        int savedDeg = m_config.binauralElevation;
+                        if (savedDeg >= degMin && savedDeg <= degMax) {
+                            bnElSlider->setValue(savedDeg);
+                            setBinauralElevation(savedDeg);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    bnTrueStereo->setChecked(m_config.binauralTrueStereo);
+    if (m_config.binauralTrueStereo) {
+        bnElSlider->setEnabled(false);
+        bnElLabel->setEnabled(false);
+        bnElMin->setEnabled(false);
+        bnElMax->setEnabled(false);
+        bnElValue->setEnabled(false);
+        bnAngleSlider->setEnabled(false);
+        bnAngleLabel->setEnabled(false);
+        bnAngleMin->setEnabled(false);
+        bnAngleMax->setEnabled(false);
+        bnAngleValue->setEnabled(false);
+    }
+    connect(bnTrueStereo, &QCheckBox::toggled, this,
+        [bnElSlider, bnElLabel, bnElMin, bnElMax, bnElValue,
+         bnAngleSlider, bnAngleLabel, bnAngleMin, bnAngleMax, bnAngleValue, updateElevationRange, updateAngleRange]
+        (bool checked) {
+            setBinauralTrueStereo(checked);
+            if (checked) {
+                bnElSlider->setEnabled(false);
+                bnElLabel->setEnabled(false);
+                bnElMin->setEnabled(false);
+                bnElMax->setEnabled(false);
+                bnElValue->setEnabled(false);
+                bnAngleSlider->setEnabled(false);
+                bnAngleLabel->setEnabled(false);
+                bnAngleMin->setEnabled(false);
+                bnAngleMax->setEnabled(false);
+                bnAngleValue->setEnabled(false);
+            } else {
+                updateAngleRange();
+                bnAngleSlider->setEnabled(true);
+                bnAngleLabel->setEnabled(true);
+                bnAngleMin->setEnabled(true);
+                bnAngleMax->setEnabled(true);
+                bnAngleValue->setEnabled(true);
+                updateElevationRange();
+            }
+        }
+    );
+
+    connect(m_blocks[4], &CollapsibleBlock::toggled, this, [](bool checked) {
+        setBinauralToggle(checked);
+    });
+
     QWidget *settingsContent = new QWidget();
     QVBoxLayout *stLayout = new QVBoxLayout(settingsContent);
     stLayout->setContentsMargins(8, 4, 8, 4);
@@ -877,12 +1380,13 @@ void MainWindow::setupBlocks()
     });
     stLayout->addWidget(bufSizeCombo);
 
-    m_blocks[4]->setContentWidget(settingsContent);
+    m_blocks[5]->setContentWidget(settingsContent);
 
     setCentralWidget(centralWidget);
     m_blocks[0]->setExpanded(m_config.uiExpandedCorrecting);
     m_blocks[1]->setExpanded(m_config.uiExpandedPreamplifier);
     m_blocks[2]->setExpanded(m_config.uiExpandedEqualizer);
     m_blocks[3]->setExpanded(m_config.uiExpandedReverb);
-    m_blocks[4]->setExpanded(m_config.uiExpandedSettings);
+    m_blocks[4]->setExpanded(m_config.uiExpandedBinaural);
+    m_blocks[5]->setExpanded(m_config.uiExpandedSettings);
 }

@@ -19,6 +19,7 @@ Processing::Processing(const Config& config, double volume, float deviceSampleRa
     equalizer(std::make_shared<Equalizer>(config.equalizerToggle, config.equalizerF, config.equalizerQ, config.equalizerG, deviceSampleRate)),
     correctionConvolver(std::make_shared<ConvolutionReverb>(config.correctionToggle, config.correctionIRFilePath, config.correctionDryWet, deviceSampleRate, config.correctionPostGain)),
     convolutionReverb(std::make_shared<ConvolutionReverb>(config.reverbToggle, config.irFilePath, config.reverbDryWet, deviceSampleRate)),
+    binauralRenderer(std::make_shared<BinauralRenderer>(config.binauralToggle, config.binauralRoom, config.binauralConfig, config.binauralElevation, config.binauralAngle, deviceSampleRate, config.binauralTrueStereo)),
     volume(volume) {}
 
 Processing::Processing(const Config& config, const Processing* old, double volume, float deviceSampleRate) :
@@ -30,6 +31,7 @@ Processing::Processing(const Config& config, const Processing* old, double volum
         convolutionReverb(std::move(old->convolutionReverb)),
         volume(volume)
 {
+    binauralRenderer = std::make_shared<BinauralRenderer>(config.binauralToggle, config.binauralRoom, config.binauralConfig, config.binauralElevation, config.binauralAngle, deviceSampleRate, config.binauralTrueStereo);
     if (old->volume != volume) {
         amplifier->setVolumeAdjustment(volume / old->volume);
     }
@@ -195,4 +197,47 @@ Processing::IRStatus Processing::getReverbIRStatus() const {
     bool loaded = convolutionReverb->getNumChunks() > 0;
     float duration = convolutionReverb->getIRDurationSec();
     return {hasFile, loaded, duration};
+}
+
+void Processing::setBinauralToggle(bool toggle) {
+    std::lock_guard<std::mutex> lock(swapMutex);
+    binauralRenderer->setToggle(toggle);
+}
+
+void Processing::setBinauralDryWet(double dryWet) {
+    (void)dryWet;
+}
+
+void Processing::setBinauralAngle(int angle) {
+    std::lock_guard<std::mutex> lock(swapMutex);
+    binauralRenderer->setAngle(angle);
+}
+
+void Processing::setBinauralConfig(const std::string& config) {
+    std::lock_guard<std::mutex> lock(swapMutex);
+    binauralRenderer->setConfig(config);
+}
+
+void Processing::setBinauralRoom(const std::string& room, const std::string& configOverride) {
+    std::lock_guard<std::mutex> lock(swapMutex);
+    binauralRenderer->setDir(room, configOverride);
+}
+
+void Processing::setBinauralTrueStereo(bool enabled) {
+    std::lock_guard<std::mutex> lock(swapMutex);
+    binauralRenderer->setTrueStereo(enabled);
+}
+
+void Processing::setBinauralElevation(int elevation) {
+    std::lock_guard<std::mutex> lock(swapMutex);
+    binauralRenderer->setElevation(elevation);
+}
+
+void Processing::setBinauralTargetDuration(float sec) {
+    std::lock_guard<std::mutex> lock(swapMutex);
+    binauralRenderer->setTargetDuration(sec);
+}
+
+void Processing::processBinaural(std::vector<float>& buffer) {
+    binauralRenderer->processInterleaved(buffer);
 }

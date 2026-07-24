@@ -633,6 +633,71 @@ void setUIExpandedSettings(bool expanded) {
     gConfig->uiExpandedSettings = expanded;
 }
 
+void setUIExpandedBinaural(bool expanded) {
+    gConfig->uiExpandedBinaural = expanded;
+}
+
+void setBinauralToggle(bool toggle) {
+    std::lock_guard<std::mutex> lock(audioProcessorMutex);
+    audioProcessor->setBinauralToggle(toggle);
+    gConfig->binauralToggle = toggle;
+}
+
+void setBinauralDryWet(double dryWet) {
+    std::lock_guard<std::mutex> lock(audioProcessorMutex);
+    audioProcessor->setBinauralDryWet(dryWet);
+    gConfig->binauralDryWet = static_cast<float>(dryWet);
+}
+
+void setBinauralAngle(int angle) {
+    std::lock_guard<std::mutex> lock(audioProcessorMutex);
+    audioProcessor->setBinauralAngle(angle);
+    gConfig->binauralAngle = angle;
+}
+
+void setBinauralConfig(const std::string& config) {
+    std::lock_guard<std::mutex> lock(audioProcessorMutex);
+    audioProcessor->setBinauralConfig(config);
+    gConfig->binauralConfig = config;
+}
+
+void setBinauralElevation(int elevation) {
+    std::lock_guard<std::mutex> lock(audioProcessorMutex);
+    audioProcessor->setBinauralElevation(elevation);
+    gConfig->binauralElevation = elevation;
+}
+
+void setBinauralTargetDuration(float sec) {
+    std::lock_guard<std::mutex> lock(audioProcessorMutex);
+    audioProcessor->setBinauralTargetDuration(sec);
+}
+
+void setBinauralRoom(const std::string& room, const std::string& configOverride) {
+    std::lock_guard<std::mutex> lock(audioProcessorMutex);
+    audioProcessor->setBinauralRoom(room, configOverride);
+    gConfig->binauralRoom = room;
+}
+
+void setBinauralTrueStereo(bool enabled) {
+    std::lock_guard<std::mutex> lock(audioProcessorMutex);
+    audioProcessor->setBinauralTrueStereo(enabled);
+    gConfig->binauralTrueStereo = enabled;
+}
+
+std::vector<std::string> getBinauralRooms() {
+    return BinauralRenderer::availableRooms();
+}
+
+std::vector<RoomInfoData> getRoomInfos() {
+    auto infos = BinauralRenderer::loadRoomInfos();
+    std::vector<RoomInfoData> result;
+    result.reserve(infos.size());
+    for (auto& r : infos) {
+        result.push_back({r.id, r.name, r.location, r.type, r.dimensions, r.rt60, r.listener, r.sourceDistance, r.azimuthRange, r.elevationRange, r.measurementConfig});
+    }
+    return result;
+}
+
 void cleanup() {
     static std::atomic<bool> cleanedUp{false};
     if (cleanedUp.exchange(true)) return;
@@ -675,6 +740,7 @@ void audioWorker() {
 
         auto t0 = std::chrono::steady_clock::now();
         audioProcessor->process(chunk);
+        audioProcessor->processBinaural(chunk);
         auto t1 = std::chrono::steady_clock::now();
         float elapsed = std::chrono::duration<float, std::milli>(t1 - t0).count();
         float prev = lastProcessMs.load(std::memory_order_relaxed);
