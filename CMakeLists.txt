@@ -64,6 +64,15 @@ find_library(AVFOUNDATION_LIB AVFoundation)
 find_library(FOUNDATION_LIB Foundation)
 find_package(SndFile REQUIRED)
 
+find_library(WAVPACK_LIB wavpack)
+find_path(WAVPACK_INCLUDE_DIR wavpack/wavpack.h
+    HINTS /usr/local /opt/homebrew
+    PATH_SUFFIXES include)
+
+if(NOT WAVPACK_LIB OR NOT WAVPACK_INCLUDE_DIR)
+    message(FATAL_ERROR "libwavpack not found. Install with: brew install wavpack")
+endif()
+
 target_link_libraries(AudioFlow3
     PRIVATE
         Qt::Core
@@ -73,7 +82,10 @@ target_link_libraries(AudioFlow3
         ${AVFOUNDATION_LIB}
         ${FOUNDATION_LIB}
         SndFile::sndfile
+        ${WAVPACK_LIB}
 )
+
+target_include_directories(AudioFlow3 PRIVATE ${WAVPACK_INCLUDE_DIR})
 
 install(TARGETS AudioFlow3
     BUNDLE  DESTINATION .

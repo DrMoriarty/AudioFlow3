@@ -89,3 +89,4 @@ AudioFlow3_autogen
 CMakeFiles
 CMakeCache.txt
 cmake_install.cmake
+.aider*

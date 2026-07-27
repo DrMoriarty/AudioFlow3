@@ -20,6 +20,8 @@ Real-time audio processor for macOS that captures system audio via a virtual dri
 - macOS 13.0+
 - [BlackHole](https://existential.audio/blackhole/) virtual audio driver (16ch or 2ch)
 - Qt 6.5+ (build only)
+- libsndfile (for WAV file I/O): `brew install libsndfile`
+- libwavpack (for WavPack-compressed WAV/IR files): `brew install wavpack`
 
 ## Installation Instructions
 
@@ -40,7 +42,7 @@ Or use `brew uninstall audioflow` if you used brew for installation.
 
 ## Signal Chain
 
-Correction → Preamplifier → Equalizer → Convolution Reverb
+Correction → Preamplifier → Equalizer → Convolution Reverb → Binaural Renderer
 
 Each block is toggled on/off. Signal flows top-to-bottom.
 
@@ -67,6 +69,18 @@ Each block is toggled on/off. Signal flows top-to-bottom.
 
 - Loads any WAV impulse response file
 - Dry/Wet mix control
+
+### Binaural Renderer
+
+- HRTF-based binaural room rendering using BRIR (Binaural Room Impulse Response) files
+- 35 rooms with various acoustic properties (listening rooms, studios, auditoriums, etc.)
+- Room selection combo sorted by type and name
+- Measurement configuration selection per room (C1, C2, etc.)
+- Azimuth angle selection (-180° .. +180°)
+- Elevation angle selection
+- True Stereo mode: full 4-channel BRIR convolution (LL, LR, RL, RR) for accurate cross-talk cancellation
+- Smooth anti-click crossfade (~138 ms) when switching rooms, configs, or True Stereo mode
+- All settings persisted across sessions
 
 ### Settings
 
@@ -109,6 +123,8 @@ All contributions are welcome. Whether you're fixing a bug, adding a new feature
 This project uses C++ code from the original AudioFlow project, which you can find here: https://github.com/jeremicna/AudioFlow
 
 Also this project uses the BlackHole Audio Loopback Driver by @ExistentialAudio to capture system audio. https://github.com/ExistentialAudio/BlackHole
+
+BRIR files from the Berlin BRIR database by the Audio Communication Group, TU Berlin, and partners (RWTH Aachen, University of Salford, University of Rostock, TU Ilmenau, LAAS-CNRS Toulouse, University of Surrey, WDR Broadcast Studios). http://dx.doi.org/10.14279/depositonce-5718
 
 ## License
 
