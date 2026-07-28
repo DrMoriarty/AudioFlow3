@@ -50,7 +50,7 @@ void setBinauralToggle(bool toggle);
 void setBinauralDryWet(double dryWet);
 void setBinauralAngle(int angle);
 void setBinauralConfig(const std::string& config);
-void setBinauralElevation(int elevation);
+
 void setBinauralTargetDuration(float sec);
 void setBinauralRoom(const std::string& room, const std::string& configOverride = "");
 void setBinauralTrueStereo(bool enabled);
@@ -66,7 +66,6 @@ struct RoomInfoData {
     std::string listener;
     std::string sourceDistance;
     std::string azimuthRange;
-    std::string elevationRange;
     std::string measurementConfig;
 };
 std::vector<RoomInfoData> getRoomInfos();

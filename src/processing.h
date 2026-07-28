@@ -42,7 +42,7 @@ public:
     void setBinauralDryWet(double dryWet);
     void setBinauralAngle(int angle);
     void setBinauralConfig(const std::string& config);
-    void setBinauralElevation(int elevation);
+
     void setBinauralRoom(const std::string& room, const std::string& configOverride = "");
     void setBinauralTrueStereo(bool enabled);
     void setBinauralTargetDuration(float sec);

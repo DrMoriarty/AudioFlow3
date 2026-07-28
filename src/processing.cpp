@@ -19,7 +19,7 @@ Processing::Processing(const Config& config, double volume, float deviceSampleRa
     equalizer(std::make_shared<Equalizer>(config.equalizerToggle, config.equalizerF, config.equalizerQ, config.equalizerG, deviceSampleRate)),
     correctionConvolver(std::make_shared<ConvolutionReverb>(config.correctionToggle, config.correctionIRFilePath, config.correctionDryWet, deviceSampleRate, config.correctionPostGain)),
     convolutionReverb(std::make_shared<ConvolutionReverb>(config.reverbToggle, config.irFilePath, config.reverbDryWet, deviceSampleRate)),
-    binauralRenderer(std::make_shared<BinauralRenderer>(config.binauralToggle, config.binauralRoom, config.binauralConfig, config.binauralElevation, config.binauralAngle, deviceSampleRate, config.binauralTrueStereo)),
+    binauralRenderer(std::make_shared<BinauralRenderer>(config.binauralToggle, config.binauralRoom, config.binauralConfig, config.binauralAngle, deviceSampleRate, config.binauralTrueStereo)),
     volume(volume) {}
 
 Processing::Processing(const Config& config, const Processing* old, double volume, float deviceSampleRate) :
@@ -31,7 +31,7 @@ Processing::Processing(const Config& config, const Processing* old, double volum
         convolutionReverb(std::move(old->convolutionReverb)),
         volume(volume)
 {
-    binauralRenderer = std::make_shared<BinauralRenderer>(config.binauralToggle, config.binauralRoom, config.binauralConfig, config.binauralElevation, config.binauralAngle, deviceSampleRate, config.binauralTrueStereo);
+    binauralRenderer = std::make_shared<BinauralRenderer>(config.binauralToggle, config.binauralRoom, config.binauralConfig, config.binauralAngle, deviceSampleRate, config.binauralTrueStereo);
     if (old->volume != volume) {
         amplifier->setVolumeAdjustment(volume / old->volume);
     }
@@ -228,10 +228,6 @@ void Processing::setBinauralTrueStereo(bool enabled) {
     binauralRenderer->setTrueStereo(enabled);
 }
 
-void Processing::setBinauralElevation(int elevation) {
-    std::lock_guard<std::mutex> lock(swapMutex);
-    binauralRenderer->setElevation(elevation);
-}
 
 void Processing::setBinauralTargetDuration(float sec) {
     std::lock_guard<std::mutex> lock(swapMutex);

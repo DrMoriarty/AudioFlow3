@@ -661,11 +661,6 @@ void setBinauralConfig(const std::string& config) {
     gConfig->binauralConfig = config;
 }
 
-void setBinauralElevation(int elevation) {
-    std::lock_guard<std::mutex> lock(audioProcessorMutex);
-    audioProcessor->setBinauralElevation(elevation);
-    gConfig->binauralElevation = elevation;
-}
 
 void setBinauralTargetDuration(float sec) {
     std::lock_guard<std::mutex> lock(audioProcessorMutex);
@@ -693,7 +688,7 @@ std::vector<RoomInfoData> getRoomInfos() {
     std::vector<RoomInfoData> result;
     result.reserve(infos.size());
     for (auto& r : infos) {
-        result.push_back({r.id, r.name, r.location, r.type, r.dimensions, r.rt60, r.listener, r.sourceDistance, r.azimuthRange, r.elevationRange, r.measurementConfig});
+        result.push_back({r.id, r.name, r.location, r.type, r.dimensions, r.rt60, r.listener, r.sourceDistance, r.azimuthRange, r.measurementConfig});
     }
     return result;
 }

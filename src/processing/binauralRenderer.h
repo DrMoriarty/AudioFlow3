@@ -12,7 +12,7 @@
 
 class BinauralRenderer {
 public:
-    BinauralRenderer(bool toggle, const std::string& brirDir, const std::string& config, int elevation, int angle, float deviceSampleRate, bool trueStereo = false);
+    BinauralRenderer(bool toggle, const std::string& brirDir, const std::string& config, int angle, float deviceSampleRate, bool trueStereo = false);
     ~BinauralRenderer();
 
     void processInterleaved(std::vector<float>& buffer);
@@ -27,7 +27,7 @@ public:
     int getAngle() const { return m_angle.load(std::memory_order_relaxed); }
 
     void setConfig(const std::string& config);
-    void setElevation(int elevation);
+
     void setDir(const std::string& dir, const std::string& configOverride = "");
     void setTrueStereo(bool enabled);
     bool isTrueStereo() const { return m_trueStereo; }
@@ -49,7 +49,7 @@ public:
         std::string listener;
         std::string sourceDistance;
         std::string azimuthRange;
-        std::string elevationRange;
+
         std::string measurementConfig;
     };
     static std::vector<RoomInfo> loadRoomInfos();
@@ -71,7 +71,7 @@ private:
     std::atomic<int> m_angle;
     std::string m_brirDir;
     std::string m_config;
-    int m_elevation;
+
     bool m_trueStereo;
     float m_deviceSampleRate;
 

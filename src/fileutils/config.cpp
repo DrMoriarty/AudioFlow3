@@ -37,7 +37,7 @@ Config::Config(const std::string& configPath) : configFilePath(configPath) {
     binauralRoom = "R01";
     binauralAngle = 0;
     binauralConfig = "C1";
-    binauralElevation = 0;
+
     binauralTrueStereo = false;
 
     bufferSize = 4096;
@@ -87,7 +87,7 @@ bool Config::loadConfig() {
     std::string binauralRoom = data.contains("binaural") && data["binaural"].contains("room") ? data["binaural"]["room"].get<std::string>() : "R01";
     int binauralAngle = data.contains("binaural") && data["binaural"].contains("angle") ? data["binaural"]["angle"].get<int>() : 0;
     std::string binauralConfig = data.contains("binaural") && data["binaural"].contains("cfg") ? data["binaural"]["cfg"].get<std::string>() : "C1";
-    int binauralElevation = data.contains("binaural") && data["binaural"].contains("elevation") ? data["binaural"]["elevation"].get<int>() : 0;
+
     bool binauralTrueStereo = data.contains("binaural") && data["binaural"].contains("trueStereo") ? data["binaural"]["trueStereo"].get<bool>() : false;
 
     int bufferSize = data.contains("bufferSize") ? data["bufferSize"].get<int>() : 4096;
@@ -99,7 +99,7 @@ bool Config::loadConfig() {
     bool uiExpandedSettings = data.contains("ui") && data["ui"].contains("expanded") && data["ui"]["expanded"].contains("settings") ? data["ui"]["expanded"]["settings"].get<bool>() : false;
     bool uiExpandedBinaural = data.contains("ui") && data["ui"].contains("expanded") && data["ui"]["expanded"].contains("binaural") ? data["ui"]["expanded"]["binaural"].get<bool>() : false;
 
-    if (ampToggle != this->ampToggle || ampAuto != this->ampAuto || ampGain != this->ampGain || equalizerToggle != this->equalizerToggle || equalizerF != this->equalizerF || equalizerQ != this->equalizerQ || equalizerG != this->equalizerG || equalizerPreset != this->equalizerPreset || reverbToggle != this->reverbToggle || reverbDryWet != this->reverbDryWet || irFilePath != this->irFilePath || correctionToggle != this->correctionToggle || correctionDryWet != this->correctionDryWet || correctionIRFilePath != this->correctionIRFilePath || correctionPostGain != this->correctionPostGain || bufferSize != this->bufferSize || uiExpandedCorrecting != this->uiExpandedCorrecting || uiExpandedPreamplifier != this->uiExpandedPreamplifier || uiExpandedEqualizer != this->uiExpandedEqualizer || uiExpandedReverb != this->uiExpandedReverb || uiExpandedSettings != this->uiExpandedSettings || uiExpandedBinaural != this->uiExpandedBinaural || correctionRecent != this->correctionRecent || binauralToggle != this->binauralToggle || binauralDryWet != this->binauralDryWet || binauralRoom != this->binauralRoom || binauralAngle != this->binauralAngle || binauralConfig != this->binauralConfig || binauralElevation != this->binauralElevation || binauralTrueStereo != this->binauralTrueStereo) {
+    if (ampToggle != this->ampToggle || ampAuto != this->ampAuto || ampGain != this->ampGain || equalizerToggle != this->equalizerToggle || equalizerF != this->equalizerF || equalizerQ != this->equalizerQ || equalizerG != this->equalizerG || equalizerPreset != this->equalizerPreset || reverbToggle != this->reverbToggle || reverbDryWet != this->reverbDryWet || irFilePath != this->irFilePath || correctionToggle != this->correctionToggle || correctionDryWet != this->correctionDryWet || correctionIRFilePath != this->correctionIRFilePath || correctionPostGain != this->correctionPostGain || bufferSize != this->bufferSize || uiExpandedCorrecting != this->uiExpandedCorrecting || uiExpandedPreamplifier != this->uiExpandedPreamplifier || uiExpandedEqualizer != this->uiExpandedEqualizer || uiExpandedReverb != this->uiExpandedReverb || uiExpandedSettings != this->uiExpandedSettings || uiExpandedBinaural != this->uiExpandedBinaural || correctionRecent != this->correctionRecent || binauralToggle != this->binauralToggle || binauralDryWet != this->binauralDryWet || binauralRoom != this->binauralRoom || binauralAngle != this->binauralAngle || binauralConfig != this->binauralConfig || binauralTrueStereo != this->binauralTrueStereo) {
         this->ampToggle = ampToggle;
         this->ampAuto = ampAuto;
         this->ampGain = ampGain;
@@ -125,7 +125,7 @@ bool Config::loadConfig() {
         this->binauralRoom = binauralRoom;
         this->binauralAngle = binauralAngle;
         this->binauralConfig = binauralConfig;
-        this->binauralElevation = binauralElevation;
+
         this->binauralTrueStereo = binauralTrueStereo;
 
         this->bufferSize = bufferSize;
@@ -175,7 +175,6 @@ bool Config::saveConfig() {
             {"room", binauralRoom},
             {"angle", binauralAngle},
             {"cfg", binauralConfig},
-            {"elevation", binauralElevation},
             {"trueStereo", binauralTrueStereo}
         }},
         {"bufferSize", bufferSize},

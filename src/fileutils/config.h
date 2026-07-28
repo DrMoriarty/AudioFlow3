@@ -43,7 +43,6 @@ public:
     std::string binauralRoom;
     int binauralAngle;
     std::string binauralConfig;
-    int binauralElevation;
     bool binauralTrueStereo;
 
     int bufferSize;

@@ -977,17 +977,14 @@ void MainWindow::setupBlocks()
     QLabel *lblRt60   = new QLabel("RT60");             lblRt60->setStyleSheet(lblSt);
     QLabel *lblAz     = new QLabel("Azimuth Range");    lblAz->setStyleSheet(lblSt);
     QLabel *lblDist   = new QLabel("Source Distance");  lblDist->setStyleSheet(lblSt);
-    QLabel *lblEl     = new QLabel("Elevation Range");  lblEl->setStyleSheet(lblSt);
 
     QLabel *valRt60 = makeValLbl(valSt);
     QLabel *valAz   = makeValLbl(valSt);
     QLabel *valDist = makeValLbl(valSt);
-    QLabel *valEl   = makeValLbl(valSt);
 
     int row = 0;
     bnGrid->addWidget(lblLocation,  row, 0); bnGrid->addWidget(valLocation, row, 1, 1, 3); row++;
     bnGrid->addWidget(lblType,      row, 0); bnGrid->addWidget(valType,     row, 1, 1, 3); row++;
-    bnGrid->addWidget(lblDim,       row, 0); bnGrid->addWidget(valDim,      row, 1, 1, 3); row++;
     bnGrid->addWidget(lblListener,  row, 0); bnGrid->addWidget(valListener, row, 1, 1, 3); row++;
 
     bnGrid->addItem(new QSpacerItem(1,8), row, 0, 1, 4); row++;
@@ -998,7 +995,7 @@ void MainWindow::setupBlocks()
     bnGrid->addItem(new QSpacerItem(1,4), row, 0, 1, 4); row++;
 
     bnGrid->addWidget(lblAz, row, 0); bnGrid->addWidget(valAz, row, 1);
-    bnGrid->addWidget(lblEl, row, 2); bnGrid->addWidget(valEl, row, 3); row++;
+    bnGrid->addWidget(lblDim, row, 2); bnGrid->addWidget(valDim, row, 3); row++;
 
     bnLayout->addWidget(bnInfoWidget);
 
@@ -1016,42 +1013,8 @@ void MainWindow::setupBlocks()
     bnCfgLayout->addStretch();
     bnLayout->addLayout(bnCfgLayout);
 
-    // --- Elevation row (form-style) ---
-    QHBoxLayout *bnElRowLayout = new QHBoxLayout();
-    bnElRowLayout->setContentsMargins(0, 0, 0, 0);
-    bnElRowLayout->setSpacing(8);
-    QLabel *bnElLabel = new QLabel("Elevation:");
-    int colLabelW  = bnElLabel->fontMetrics().horizontalAdvance("Elevation:") + 10;
-    int colValW    = bnElLabel->fontMetrics().horizontalAdvance("999°") + 2;
-    int colMinW    = bnElLabel->fontMetrics().horizontalAdvance("-99°") + 2;
-    int colMaxW    = colMinW;
-
-    bnElLabel->setMinimumWidth(colLabelW);
-    bnElRowLayout->addWidget(bnElLabel, 0, Qt::AlignVCenter);
-
-    QLabel *bnElValue = new QLabel("0°");
-    bnElValue->setMinimumWidth(colValW);
-    bnElValue->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
-    bnElRowLayout->addWidget(bnElValue, 0, Qt::AlignVCenter);
-    bnElRowLayout->addSpacing(8);
-    QLabel *bnElMin = new QLabel();
-    bnElMin->setMinimumWidth(colMinW);
-    bnElMin->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    bnElRowLayout->addWidget(bnElMin, 0, Qt::AlignVCenter);
-    QSlider *bnElSlider = new QSlider(Qt::Horizontal);
-    bnElSlider->setTickPosition(QSlider::TicksBelow);
-    bnElSlider->setSingleStep(15);
-    bnElSlider->setPageStep(15);
-    bnElSlider->setTickInterval(15);
-    bnElRowLayout->addWidget(bnElSlider, 1, Qt::AlignVCenter);
-    QLabel *bnElMax = new QLabel();
-    bnElMax->setMinimumWidth(colMaxW);
-    bnElMax->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
-    bnElRowLayout->addWidget(bnElMax, 0, Qt::AlignVCenter);
-    bnLayout->addLayout(bnElRowLayout);
-
     auto updateRoomInfo = [bnRoomCombo, bnCfgCombo, roomInfos,
-        valLocation, valType, valDim, valListener, valRt60, valAz, valDist, valEl]() {
+        valLocation, valType, valDim, valListener, valRt60, valAz, valDist]() {
         std::string roomId = bnRoomCombo->currentData().toString().toStdString();
         std::string selCfg = bnCfgCombo->currentText().toStdString();
         auto it = std::find_if(roomInfos.begin(), roomInfos.end(),
@@ -1075,7 +1038,6 @@ void MainWindow::setupBlocks()
         showOrHide(valRt60,     nullptr, sv(r.rt60, selCfg, "s"));
         showOrHide(valAz,       nullptr, sv(r.azimuthRange, selCfg));
         showOrHide(valDist,     nullptr, sv(r.sourceDistance, selCfg, "m"));
-        showOrHide(valEl,       nullptr, sv(r.elevationRange, selCfg));
     };
 
     auto updateConfigOptions = [bnCfgCombo, bnCfgLabel, roomInfos, bnRoomCombo]() {
@@ -1104,43 +1066,13 @@ void MainWindow::setupBlocks()
         bnCfgLabel->setEnabled(multipleCfg);
     };
 
-    auto updateElevationRange = [roomInfos, bnRoomCombo, bnCfgCombo, bnElSlider, bnElMin, bnElValue, bnElMax, bnElLabel]() {
-        std::string roomId = bnRoomCombo->currentData().toString().toStdString();
-        std::string selCfg = bnCfgCombo->currentText().toStdString();
-        auto it = std::find_if(roomInfos.begin(), roomInfos.end(),
-            [&](const RoomInfoData& r){ return r.id == roomId; });
-        if (it == roomInfos.end()) return;
-        int degMin = 0, degMax = 0;
-        QString qs = matchConfigValue(it->elevationRange, selCfg);
-        std::string s = qs.toStdString();
-        if (!s.empty() && s != "N/A") {
-            int absVal = 0;
-            std::smatch m;
-            if (std::regex_search(s, m, std::regex("±(\\d+)")))
-                absVal = std::stoi(m[1].str());
-            else if (std::regex_search(s, m, std::regex("[+-]?(\\d+)\\s*°")))
-                absVal = std::stoi(m[1].str());
-            if (absVal > 0) { degMin = -absVal; degMax = absVal; }
-        }
-        bool hasRange = (degMin != degMax);
-        bnElSlider->blockSignals(true);
-        bnElSlider->setRange(degMin, degMax);
-        bnElSlider->setSingleStep(15);
-        bnElSlider->setPageStep(15);
-        bnElSlider->setTickInterval(15);
-        bnElSlider->setValue((degMin + degMax) / 2);
-        bnElSlider->blockSignals(false);
-        bnElSlider->setEnabled(hasRange);
-        bnElLabel->setEnabled(hasRange);
-        bnElMin->setEnabled(hasRange);
-        bnElMax->setEnabled(hasRange);
-        bnElValue->setEnabled(hasRange);
-        bnElMin->setText(hasRange ? QString::number(degMin) + "°" : "0°");
-        bnElMax->setText(hasRange ? QString::number(degMax) + "°" : "0°");
-        bnElValue->setText(hasRange ? QString::number(bnElSlider->value()) + "°" : "0°");
-    };
-
     // --- Position (azimuth) slider — 0 to max azimuth parsed from room's CSV ---
+    QLabel *bnAngleLabel = new QLabel(tr("Azimuth:"));
+    int colLabelW  = bnAngleLabel->fontMetrics().horizontalAdvance("Azimuth:") + 10;
+    int colValW    = bnAngleLabel->fontMetrics().horizontalAdvance("999°") + 2;
+    int colMinW    = bnAngleLabel->fontMetrics().horizontalAdvance("-99°") + 2;
+    int colMaxW    = colMinW;
+
     QLabel *bnAngleMin = new QLabel("0°");
     QLabel *bnAngleMax = new QLabel("180°");
     QLabel *bnAngleValue = new QLabel();
@@ -1173,22 +1105,10 @@ void MainWindow::setupBlocks()
 
     updateConfigOptions();
     updateRoomInfo();
-    updateElevationRange();
     updateAngleRange();
 
-    connect(bnElSlider, &QSlider::valueChanged, this, [bnElSlider, bnElValue](int v) {
-        int snapped = static_cast<int>(std::round(v / 15.0)) * 15;
-        if (snapped != v) {
-            QSignalBlocker blocker(bnElSlider);
-            bnElSlider->setValue(snapped);
-        }
-        bnElValue->setText(QString::number(snapped) + "°");
-        setBinauralElevation(snapped);
-    });
-
-    connect(bnCfgCombo, &QComboBox::currentIndexChanged, this, [bnCfgCombo, updateRoomInfo, updateElevationRange, updateAngleRange]() {
+    connect(bnCfgCombo, &QComboBox::currentIndexChanged, this, [bnCfgCombo, updateRoomInfo, updateAngleRange]() {
         updateRoomInfo();
-        updateElevationRange();
         updateAngleRange();
         QString cfg = bnCfgCombo->currentText();
         if (!cfg.isEmpty()) setBinauralConfig(cfg.toStdString());
@@ -1209,7 +1129,6 @@ void MainWindow::setupBlocks()
     QHBoxLayout *bnAngleLayout = new QHBoxLayout();
     bnAngleLayout->setContentsMargins(0, 0, 0, 0);
     bnAngleLayout->setSpacing(8);
-    QLabel *bnAngleLabel = new QLabel(tr("Azimuth:"));
     bnAngleLabel->setMinimumWidth(colLabelW);
     bnAngleLayout->addWidget(bnAngleLabel, 0, Qt::AlignVCenter);
     bnAngleValue->setMinimumWidth(colValW);
@@ -1228,9 +1147,9 @@ void MainWindow::setupBlocks()
     m_blocks[4]->setContentWidget(binauralContent);
 
     connect(bnRoomCombo, &QComboBox::currentIndexChanged, this,
-        [bnRoomCombo, bnAngleSlider, bnElSlider, bnElLabel, bnElMin, bnElMax, bnElValue,
+        [bnRoomCombo, bnAngleSlider,
          bnAngleLabel, bnAngleMin, bnAngleMax, bnAngleValue, bnTrueStereo,
-         updateRoomInfo, updateConfigOptions, updateElevationRange, updateAngleRange, bnCfgCombo, roomInfos]() {
+         updateRoomInfo, updateConfigOptions, updateAngleRange, bnCfgCombo]() {
         QString room = bnRoomCombo->currentData().toString();
         updateConfigOptions();
         if (!room.isEmpty()) {
@@ -1239,13 +1158,7 @@ void MainWindow::setupBlocks()
         }
         updateAngleRange();
         updateRoomInfo();
-        updateElevationRange();
         if (bnTrueStereo->isChecked()) {
-            bnElSlider->setEnabled(false);
-            bnElLabel->setEnabled(false);
-            bnElMin->setEnabled(false);
-            bnElMax->setEnabled(false);
-            bnElValue->setEnabled(false);
             bnAngleSlider->setEnabled(false);
             bnAngleLabel->setEnabled(false);
             bnAngleMin->setEnabled(false);
@@ -1254,7 +1167,7 @@ void MainWindow::setupBlocks()
         }
     });
 
-    // Restore saved room → config → elevation → angle from config
+    // Restore saved room → config → angle from config
     {
         for (int i = 0; i < bnRoomCombo->count(); ++i) {
             if (bnRoomCombo->itemData(i).toString().toStdString() == m_config.binauralRoom) {
@@ -1268,42 +1181,10 @@ void MainWindow::setupBlocks()
                 break;
             }
         }
-        {
-            std::string roomId = m_config.binauralRoom;
-            std::string cfg = m_config.binauralConfig;
-            auto it = std::find_if(roomInfos.begin(), roomInfos.end(),
-                [&](const RoomInfoData& r){ return r.id == roomId; });
-            if (it != roomInfos.end()) {
-                QString qs = matchConfigValue(it->elevationRange, cfg);
-                std::string s = qs.toStdString();
-                if (!s.empty() && s != "N/A") {
-                    int absVal = 0;
-                    std::smatch m;
-                    if (std::regex_search(s, m, std::regex("±(\\d+)")))
-                        absVal = std::stoi(m[1].str());
-                    else if (std::regex_search(s, m, std::regex("[+-]?(\\d+)\\s*°")))
-                        absVal = std::stoi(m[1].str());
-                    if (absVal > 0) {
-                        int degMin = -absVal;
-                        int degMax = absVal;
-                        int savedDeg = m_config.binauralElevation;
-                        if (savedDeg >= degMin && savedDeg <= degMax) {
-                            bnElSlider->setValue(savedDeg);
-                            setBinauralElevation(savedDeg);
-                        }
-                    }
-                }
-            }
-        }
     }
 
     bnTrueStereo->setChecked(m_config.binauralTrueStereo);
     if (m_config.binauralTrueStereo) {
-        bnElSlider->setEnabled(false);
-        bnElLabel->setEnabled(false);
-        bnElMin->setEnabled(false);
-        bnElMax->setEnabled(false);
-        bnElValue->setEnabled(false);
         bnAngleSlider->setEnabled(false);
         bnAngleLabel->setEnabled(false);
         bnAngleMin->setEnabled(false);
@@ -1311,16 +1192,10 @@ void MainWindow::setupBlocks()
         bnAngleValue->setEnabled(false);
     }
     connect(bnTrueStereo, &QCheckBox::toggled, this,
-        [bnElSlider, bnElLabel, bnElMin, bnElMax, bnElValue,
-         bnAngleSlider, bnAngleLabel, bnAngleMin, bnAngleMax, bnAngleValue, updateElevationRange, updateAngleRange]
+        [bnAngleSlider, bnAngleLabel, bnAngleMin, bnAngleMax, bnAngleValue, updateAngleRange]
         (bool checked) {
             setBinauralTrueStereo(checked);
             if (checked) {
-                bnElSlider->setEnabled(false);
-                bnElLabel->setEnabled(false);
-                bnElMin->setEnabled(false);
-                bnElMax->setEnabled(false);
-                bnElValue->setEnabled(false);
                 bnAngleSlider->setEnabled(false);
                 bnAngleLabel->setEnabled(false);
                 bnAngleMin->setEnabled(false);
@@ -1333,7 +1208,6 @@ void MainWindow::setupBlocks()
                 bnAngleMin->setEnabled(true);
                 bnAngleMax->setEnabled(true);
                 bnAngleValue->setEnabled(true);
-                updateElevationRange();
             }
         }
     );

@@ -29,9 +29,9 @@ static std::string getBrirBasePath() {
     return cached;
 }
 
-static std::vector<int> scanAngles(const std::string& roomDir, const std::string& config, int elevation) {
+static std::vector<int> scanAngles(const std::string& roomDir, const std::string& config) {
     std::vector<int> angles;
-    std::string prefix = "_" + config + "_E" + std::to_string(elevation) + "_A";
+    std::string prefix = "_" + config + "_E0_A";
     DIR* d = opendir(roomDir.c_str());
     if (!d) return angles;
     struct dirent* ent;
@@ -71,8 +71,8 @@ static std::string angleName(int angle) {
     return oss.str();
 }
 
-static std::string brirFilePath(const std::string& room, const std::string& roomDir, const std::string& config, int elevation, int angle) {
-    return roomDir + "/BRIR_" + room + "_" + config + "_E" + std::to_string(elevation) + "_" + angleName(angle) + ".wav";
+static std::string brirFilePath(const std::string& room, const std::string& roomDir, const std::string& config, int angle) {
+    return roomDir + "/BRIR_" + room + "_" + config + "_E0_" + angleName(angle) + ".wav";
 }
 
 void BinauralRenderer::allocateBuffers() {
@@ -126,13 +126,12 @@ void BinauralRenderer::beginCrossfade() {
     m_xfadeActive         = true;
 }
 
-BinauralRenderer::BinauralRenderer(bool toggle, const std::string& brirDir, const std::string& config, int elevation, int angle, float deviceSampleRate, bool trueStereo)
+BinauralRenderer::BinauralRenderer(bool toggle, const std::string& brirDir, const std::string& config, int angle, float deviceSampleRate, bool trueStereo)
     : m_toggle(toggle)
     , m_dryWet(Smoother(1.0, 1.0, 0))
     , m_angle(angle)
     , m_brirDir(brirDir)
     , m_config(config)
-    , m_elevation(elevation)
     , m_trueStereo(trueStereo)
     , m_deviceSampleRate(deviceSampleRate)
     , m_chunkSize(static_cast<size_t>(convolutionChunkSize))
@@ -278,14 +277,14 @@ void BinauralRenderer::loadBRIRUnlocked() {
         return;
     }
 
-    auto angles = scanAngles(roomDir, m_config, m_elevation);
+    auto angles = scanAngles(roomDir, m_config);
     int angle = nearestAngle(angles, m_angle.load(std::memory_order_relaxed));
     m_angle.store(angle, std::memory_order_relaxed);
 
     std::vector<SplitComplexV> negL, negR, posL, posR;
     size_t numChunksNeg = 0, numChunksPos = 0;
 
-    std::string pathPos = brirFilePath(m_brirDir, roomDir, m_config, m_elevation, angle);
+    std::string pathPos = brirFilePath(m_brirDir, roomDir, m_config, angle);
     loadBRIRFile(pathPos, m_deviceSampleRate, m_chunkSize, m_paddedSize, m_numBins,
                  m_fftSetup, posL, posR, numChunksPos);
 
@@ -294,7 +293,7 @@ void BinauralRenderer::loadBRIRUnlocked() {
         negR = posR;
         numChunksNeg = numChunksPos;
     } else {
-        std::string pathNeg = brirFilePath(m_brirDir, roomDir, m_config, m_elevation, -angle);
+        std::string pathNeg = brirFilePath(m_brirDir, roomDir, m_config, -angle);
         loadBRIRFile(pathNeg, m_deviceSampleRate, m_chunkSize, m_paddedSize, m_numBins,
                      m_fftSetup, negL, negR, numChunksNeg);
     }
@@ -331,7 +330,7 @@ void BinauralRenderer::loadBRIRUnlocked() {
     m_irFFTsPosL = std::move(posL);
     m_irFFTsPosR = std::move(posR);
 
-    std::string anyPath = (numChunksPos > 0) ? pathPos : brirFilePath(m_brirDir, roomDir, m_config, m_elevation, -angle);
+    std::string anyPath = (numChunksPos > 0) ? pathPos : brirFilePath(m_brirDir, roomDir, m_config, -angle);
     IRData probe = readIRFile(anyPath, static_cast<uint32_t>(m_deviceSampleRate));
     m_irDuration = probe.audioDataL.empty() ? 0.0f : static_cast<float>(probe.audioDataL.size()) / m_deviceSampleRate;
 
@@ -405,7 +404,7 @@ void BinauralRenderer::setDryWet(double v) {
 void BinauralRenderer::setAngle(int degrees) {
     std::lock_guard<std::mutex> lock(m_mutex);
     std::string roomDir = getBrirBasePath() + "/" + m_brirDir;
-    auto angles = scanAngles(roomDir, m_config, m_elevation);
+    auto angles = scanAngles(roomDir, m_config);
     int snapped = nearestAngle(angles, degrees);
     if (snapped == m_angle.load(std::memory_order_relaxed)) return;
     beginCrossfade();
@@ -430,13 +429,6 @@ void BinauralRenderer::setDir(const std::string& dir, const std::string& configO
     loadBRIRUnlocked();
 }
 
-void BinauralRenderer::setElevation(int elevation) {
-    std::lock_guard<std::mutex> lock(m_mutex);
-    if (elevation == m_elevation) return;
-    beginCrossfade();
-    m_elevation = elevation;
-    loadBRIRUnlocked();
-}
 
 void BinauralRenderer::setTrueStereo(bool enabled) {
     std::lock_guard<std::mutex> lock(m_mutex);
@@ -638,7 +630,7 @@ std::vector<BinauralRenderer::RoomInfo> BinauralRenderer::loadRoomInfos() {
         r.listener       = f[7];
         r.sourceDistance  = f[8];
         r.azimuthRange   = f[9];
-        r.elevationRange = f[10];
+
         r.measurementConfig = f[11];
         rooms.push_back(std::move(r));
     }
