@@ -913,7 +913,13 @@ void MainWindow::setupBlocks()
 
     m_blocks[3]->setContentWidget(convolverContent);
 
-    connect(m_blocks[3], &CollapsibleBlock::toggled, this, [](bool checked) {
+    connect(m_blocks[3], &CollapsibleBlock::toggled, this, [this](bool checked) {
+        if (!m_toggleGuard && checked) {
+            m_toggleGuard = true;
+            m_blocks[4]->setToggleChecked(false);
+            setBinauralToggle(false);
+            m_toggleGuard = false;
+        }
         setReverbToggle(checked);
     });
 
@@ -1212,7 +1218,13 @@ void MainWindow::setupBlocks()
         }
     );
 
-    connect(m_blocks[4], &CollapsibleBlock::toggled, this, [](bool checked) {
+    connect(m_blocks[4], &CollapsibleBlock::toggled, this, [this](bool checked) {
+        if (!m_toggleGuard && checked) {
+            m_toggleGuard = true;
+            m_blocks[3]->setToggleChecked(false);
+            setReverbToggle(false);
+            m_toggleGuard = false;
+        }
         setBinauralToggle(checked);
     });
 

@@ -62,5 +62,6 @@ private:
     QDoubleSpinBox *m_eqQ[BAND_COUNT] = {};
     QComboBox *m_eqPresetCombo = nullptr;
     bool m_eqPresetLoading = false;
+    bool m_toggleGuard = false;
 };
 #endif // MAINWINDOW_H

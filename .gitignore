@@ -90,3 +90,4 @@ CMakeFiles
 CMakeCache.txt
 cmake_install.cmake
 .aider*
+.env
