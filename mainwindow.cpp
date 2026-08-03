@@ -432,10 +432,10 @@ void MainWindow::setupBlocks()
     QLabel *gainLabel = new QLabel(tr("Gain"));
     gainLabel->setAlignment(Qt::AlignCenter);
     knobLayout->addWidget(gainLabel);
-    KnobWidget *gainKnob = new KnobWidget({"0 dB", "3 dB", "6 dB", "9 dB", "12 dB"});
+    KnobWidget *gainKnob = new KnobWidget({"0 dB", "2 dB", "4 dB", "6 dB", "8 dB"});
     float bestDist = 1000.0f;
     int bestIdx = 0;
-    const float knobValues[] = {0.0f, 3.0f, 6.0f, 9.0f, 12.0f};
+    const float knobValues[] = {0.0f, 2.0f, 4.0f, 6.0f, 8.0f};
     for (int k = 0; k < 5; ++k) {
         float dist = fabsf(m_config.correctionPostGain - knobValues[k]);
         if (dist < bestDist) { bestDist = dist; bestIdx = k; }
@@ -492,7 +492,7 @@ void MainWindow::setupBlocks()
     paLayout->addLayout(gainRowLayout);
 
     QSlider *gainSlider = new QSlider(Qt::Horizontal);
-    gainSlider->setRange(-30, 30);
+    gainSlider->setRange(-12, 12);
     gainSlider->setValue(static_cast<int>(m_config.ampGain));
     connect(gainSlider, &QSlider::valueChanged, this, [gainValueLabel](int v) {
         gainValueLabel->setText(QString("%1%2 dB").arg(v >= 0 ? "+" : "").arg(v));
@@ -506,13 +506,13 @@ void MainWindow::setupBlocks()
 
     QHBoxLayout *sliderLabelLayout = new QHBoxLayout();
     sliderLabelLayout->setContentsMargins(0, 0, 0, 0);
-    QLabel *minLabel = new QLabel(tr("-30 dB"));
+    QLabel *minLabel = new QLabel(tr("-12 dB"));
     sliderLabelLayout->addWidget(minLabel);
     sliderLabelLayout->addStretch();
     QLabel *zeroLabel = new QLabel(tr("0 dB"));
     sliderLabelLayout->addWidget(zeroLabel);
     sliderLabelLayout->addStretch();
-    QLabel *maxLabel = new QLabel(tr("+30 dB"));
+    QLabel *maxLabel = new QLabel(tr("+12 dB"));
     sliderLabelLayout->addWidget(maxLabel);
     paLayout->addLayout(sliderLabelLayout);
 
@@ -621,11 +621,11 @@ void MainWindow::setupBlocks()
     eqScaleLayout->setContentsMargins(0, 0, 0, 0);
     eqScaleLayout->setSpacing(0);
 
-    QLabel *eqPlusLabel = new QLabel("+30 dB");
+    QLabel *eqPlusLabel = new QLabel("+12 dB");
     eqPlusLabel->setAlignment(Qt::AlignCenter);
     QLabel *eqZeroLabel = new QLabel("0 dB");
     eqZeroLabel->setAlignment(Qt::AlignCenter);
-    QLabel *eqMinusLabel = new QLabel("-30 dB");
+    QLabel *eqMinusLabel = new QLabel("-12 dB");
     eqMinusLabel->setAlignment(Qt::AlignCenter);
     eqScaleLayout->addWidget(eqPlusLabel, 0, Qt::AlignTop | Qt::AlignHCenter);
     eqScaleLayout->addStretch(1);
@@ -654,16 +654,16 @@ void MainWindow::setupBlocks()
         eqGrid->addWidget(hzSpinBoxes[i], 0, col);
 
         eqSliders[i] = new QSlider(Qt::Vertical);
-        eqSliders[i]->setRange(-30, 30);
+        eqSliders[i]->setRange(-12, 12);
         eqSliders[i]->setValue(i < m_config.equalizerG.size() ? static_cast<int>(m_config.equalizerG[i]) : 0);
-        eqSliders[i]->setFixedHeight(200);
+        eqSliders[i]->setFixedHeight(100);
         m_eqGain[i] = eqSliders[i];
         eqGrid->addWidget(eqSliders[i], 1, col, Qt::AlignHCenter);
 
         gainSpinboxes[i] = new QSpinBox();
         gainSpinboxes[i]->setButtonSymbols(QAbstractSpinBox::NoButtons);
         gainSpinboxes[i]->setAlignment(Qt::AlignCenter);
-        gainSpinboxes[i]->setRange(-30, 30);
+        gainSpinboxes[i]->setRange(-12, 12);
         gainSpinboxes[i]->setValue(i < m_config.equalizerG.size() ? static_cast<int>(m_config.equalizerG[i]) : 0);
         m_eqGainSpin[i] = gainSpinboxes[i];
         eqGrid->addWidget(gainSpinboxes[i], 2, col);
@@ -772,7 +772,7 @@ void MainWindow::setupBlocks()
     eqContentH += presetLabel->sizeHint().height() + presetCombo->sizeHint().height();
     eqContentH += parametersLabel->sizeHint().height();
     eqContentH += eqLayout->spacing() * 3;
-    int sliderH = 200; // fixed slider height
+    int sliderH = 100; // fixed slider height
     int spinH = hzSpinBoxes[0]->sizeHint().height();
     int gainH = gainSpinboxes[0]->sizeHint().height();
     int qH = qSpinboxes[0]->sizeHint().height();
@@ -1229,12 +1229,16 @@ void MainWindow::setupBlocks()
     });
 
     QWidget *settingsContent = new QWidget();
-    QVBoxLayout *stLayout = new QVBoxLayout(settingsContent);
+    QGridLayout *stLayout = new QGridLayout(settingsContent);
     stLayout->setContentsMargins(8, 4, 8, 4);
     stLayout->setSpacing(4);
 
+    // === Output device ===
     QLabel *outDevLabel = new QLabel(tr("Output device"));
-    stLayout->addWidget(outDevLabel);
+    outDevLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    outDevLabel->setMinimumWidth(outDevLabel->fontMetrics().horizontalAdvance(tr("Output device")) + 10);
+    stLayout->addWidget(outDevLabel, 0, 0, 1, 1);
+
     QComboBox *outDevCombo = new QComboBox();
     QStringList outDevNames;
     for (const auto &name : getAvailableOutputDevices())
@@ -1246,10 +1250,14 @@ void MainWindow::setupBlocks()
     connect(outDevCombo, &QComboBox::currentTextChanged, this, [](const QString &text) {
         setOutputDevice(text.toStdString());
     });
-    stLayout->addWidget(outDevCombo);
+    stLayout->addWidget(outDevCombo, 1, 0, 1, 2);
 
+    // === Buffer size ===
     QLabel *bufSizeLabel = new QLabel(tr("Buffer size"));
-    stLayout->addWidget(bufSizeLabel);
+    bufSizeLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    bufSizeLabel->setMinimumWidth(bufSizeLabel->fontMetrics().horizontalAdvance(tr("Buffer size")) + 10);
+    stLayout->addWidget(bufSizeLabel, 0, 2, 1, 1);
+
     QComboBox *bufSizeCombo = new QComboBox();
     const int bufSizes[] = {64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384};
     int bufIdx = -1;
@@ -1264,7 +1272,7 @@ void MainWindow::setupBlocks()
         int bs = bufSizeCombo->itemData(index).toInt();
         if (bs > 0) setBufferSize(bs);
     });
-    stLayout->addWidget(bufSizeCombo);
+    stLayout->addWidget(bufSizeCombo, 1, 2, 1, 2);
 
     m_blocks[5]->setContentWidget(settingsContent);
 
