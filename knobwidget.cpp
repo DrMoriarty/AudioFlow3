@@ -6,21 +6,14 @@
 #include <QVBoxLayout>
 #include <QLineF>
 #include <QtMath>
-
-static constexpr float CLICK_THRESHOLD = 16.0f;
-
-static float distSquared(const QPoint &a, const QPoint &b)
-{
-    float dx = a.x() - b.x();
-    float dy = a.y() - b.y();
-    return dx * dx + dy * dy;
-}
+#include <QTimer>
+#include <QDateTime>
+#include <cmath>
 
 KnobWidget::KnobWidget(const QStringList &values, QWidget *parent)
     : QWidget(parent)
     , m_values(values)
     , m_index(0)
-    , m_pressStart()
 {
     QVBoxLayout *layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
@@ -33,6 +26,7 @@ KnobWidget::KnobWidget(const QStringList &values, QWidget *parent)
     m_label->setAlignment(Qt::AlignCenter);
     layout->addWidget(m_label);
 
+    m_currentAngle = indexToAngle(m_index);
     updateLabel();
 }
 
@@ -50,9 +44,25 @@ void KnobWidget::setCurrentIndex(int index)
 {
     if (index >= 0 && index < m_values.size()) {
         m_index = index;
+        m_currentAngle = indexToAngle(m_index);
         updateLabel();
         update();
     }
+}
+
+double KnobWidget::indexToAngle(int index) const
+{
+    if (m_values.size() <= 1)
+        return 225.0;
+    return 225.0 + static_cast<double>(index) / static_cast<double>(m_values.size() - 1) * (-270.0);
+}
+
+int KnobWidget::angleToNearestIndex(double angle) const
+{
+    if (m_values.size() <= 1)
+        return 0;
+    double exact = (angle - 225.0) / (-270.0 / (m_values.size() - 1));
+    return qBound(0, static_cast<int>(std::round(exact)), m_values.size() - 1);
 }
 
 void KnobWidget::paintEvent(QPaintEvent *event)
@@ -72,12 +82,8 @@ void KnobWidget::paintEvent(QPaintEvent *event)
     p.setBrush(QColor("#404040"));
     p.drawEllipse(cx - radius, cy - radius, knobSize, knobSize);
 
-    double startAngle = 225.0;
-    double endAngle = -45.0;
     if (m_values.size() > 1) {
-        double ratio = static_cast<double>(m_index) / (m_values.size() - 1);
-        double angle = startAngle + ratio * (endAngle - startAngle);
-        double rad = qDegreesToRadians(angle);
+        double rad = qDegreesToRadians(m_currentAngle);
         int lineLen = radius - 4;
         int ex = cx + static_cast<int>(lineLen * qCos(rad));
         int ey = cy - static_cast<int>(lineLen * qSin(rad));
@@ -88,96 +94,124 @@ void KnobWidget::paintEvent(QPaintEvent *event)
 
 void KnobWidget::mousePressEvent(QMouseEvent *event)
 {
-    QPoint pos = event->position().toPoint();
-    
     if (event->button() == Qt::LeftButton) {
-        // Calculate distance from previous press (0 on first press)
-        float dx = pos.x() - m_pressStart.x();
-        float dy = pos.y() - m_pressStart.y();
-        float dist = std::sqrt(dx * dx + dy * dy);
-        
-        if (dist < CLICK_THRESHOLD) {
-            // Fast click - cycle to next value
-            m_index = (m_index + 1) % m_values.size();
-            updateLabel();
-            update();
-            emit valueChanged(currentValue());
-            m_mousePressed = false;
-            m_pressStart = QPoint();
-            m_switchCount = 0;
-            return;
+        // Cancel any running animation, snap to its target first
+        if (m_animating) {
+            m_index = m_endIndex;
+            m_currentAngle = indexToAngle(m_index);
+            stopAnimation();
         }
-        
-        // Start dragging
+
+        m_pressStart = event->position().toPoint();
+        m_dragStartIndex = m_index;
         m_mousePressed = true;
-        m_pressStart = pos;
         m_dragging = false;
-        m_switchCount = 0;
+
     } else if (event->button() == Qt::RightButton) {
-        // Right click - cycle to previous value
-        m_index = (m_index - 1 + m_values.size()) % m_values.size();
-        updateLabel();
-        update();
-        m_mousePressed = false;
-        m_pressStart = QPoint();
-        return;
+        // Cancel any running animation, snap to its target first
+        if (m_animating) {
+            m_index = m_endIndex;
+            m_currentAngle = indexToAngle(m_index);
+            stopAnimation();
+        }
+
+        // Right click — previous value, no wrap-around
+        if (m_index > 0) {
+            int saved = m_index;
+            m_index = m_index - 1;
+            m_endIndex = m_index;
+            m_animStartAngle = indexToAngle(saved);
+            m_animEndAngle = indexToAngle(m_endIndex);
+            m_animating = true;
+            m_animStartTime = QDateTime::currentMSecsSinceEpoch();
+            m_animDuration = ANIMATION_DURATION_MS;
+
+            if (!m_animTimer) {
+                m_animTimer = new QTimer(this);
+                connect(m_animTimer, &QTimer::timeout, this, &KnobWidget::onAnimationTick);
+            }
+            m_animTimer->start(16);
+        }
     }
 }
 
 void KnobWidget::mouseMoveEvent(QMouseEvent *event)
 {
-    if (m_mousePressed) {
-        int yDelta = event->position().y() - m_pressStart.y();
-        
-        // Check if we've moved enough to be considered a drag
-        float dist = (event->position().toPoint() - m_pressStart).manhattanLength();
-        if (dist > CLICK_THRESHOLD) {
-            m_dragging = true;
-        }
-        
-        // Threshold of 60 pixels for slower switching
-        int threshold = 60;
-        
-        // Calculate how many times we should have switched based on distance
-        int newSwitchCount = yDelta / threshold;
-        
-        // Switch when the count changes
-        if (newSwitchCount != m_switchCount) {
-            int switches = newSwitchCount - m_switchCount;
-            
-            // yDelta < 0 → moving up → next value (forward)
-            // yDelta > 0 → moving down → previous value (backward)
-            if (switches > 0) {
-                m_index = (m_index - switches + m_values.size()) % m_values.size();
-            } else if (switches < 0) {
-                m_index = (m_index - switches) % m_values.size();
-            }
-            
-            m_switchCount = newSwitchCount;
-            updateLabel();
-            update();
-        }
+    if (!m_mousePressed)
+        return;
+
+    QPoint pos = event->position().toPoint();
+    QPoint delta = pos - m_pressStart;
+
+    if (!m_dragging && delta.manhattanLength() > CLICK_MAX_PX) {
+        m_dragging = true;
     }
+
+    if (!m_dragging)
+        return;
+
+    stopAnimation();
+
+    int yDelta = pos.y() - m_pressStart.y();
+    double anglePerStep = -270.0 / (m_values.size() - 1);
+    double angleDelta = (-static_cast<double>(yDelta) / DRAG_STEP_PX) * anglePerStep;
+    double targetAngle = indexToAngle(m_dragStartIndex) + angleDelta;
+
+    double minAngle = indexToAngle(m_values.size() - 1);
+    double maxAngle = indexToAngle(0);
+    m_currentAngle = qBound(minAngle, targetAngle, maxAngle);
+
+    int nearest = angleToNearestIndex(m_currentAngle);
+    if (nearest != m_index) {
+        m_index = nearest;
+        updateLabel();
+    }
+    update();
 }
 
 void KnobWidget::mouseReleaseEvent(QMouseEvent *event)
 {
-    if (event->button() == Qt::LeftButton && m_mousePressed && m_switchCount == 0 && !m_dragging) {
-        // Fast click — toggle to next value on release
-        m_index = (m_index + 1) % m_values.size();
-        updateLabel();
-        update();
-        emit valueChanged(currentValue());
-        m_mousePressed = false;
-        m_pressStart = QPoint();
-        m_switchCount = 0;
-        m_dragging = false;
-    } else if (event->button() == Qt::LeftButton && m_mousePressed && m_switchCount != 0) {
-        // Drag released — keep current value
-        m_mousePressed = false;
-        m_pressStart = QPoint();
-        m_dragging = false;
+    if (event->button() != Qt::LeftButton || !m_mousePressed)
+        return;
+
+    if (!m_dragging) {
+        // Click — next value, no wrap-around
+        if (m_index < m_values.size() - 1) {
+            int saved = m_index;
+            m_index = m_index + 1;
+            m_endIndex = m_index;
+            m_animStartAngle = indexToAngle(saved);
+            m_animEndAngle = indexToAngle(m_endIndex);
+            m_animating = true;
+            m_animStartTime = QDateTime::currentMSecsSinceEpoch();
+            m_animDuration = ANIMATION_DURATION_MS;
+
+            if (!m_animTimer) {
+                m_animTimer = new QTimer(this);
+                connect(m_animTimer, &QTimer::timeout, this, &KnobWidget::onAnimationTick);
+            }
+            m_animTimer->start(16);
+        }
+    } else {
+        // Drag released — animate to nearest discrete value
+        int nearest = angleToNearestIndex(m_currentAngle);
+        m_index = nearest;
+        m_endIndex = nearest;
+        m_animStartAngle = m_currentAngle;
+        m_animEndAngle = indexToAngle(nearest);
+        m_animating = true;
+        m_animStartTime = QDateTime::currentMSecsSinceEpoch();
+        m_animDuration = SNAP_DURATION_MS;
+
+        if (!m_animTimer) {
+            m_animTimer = new QTimer(this);
+            connect(m_animTimer, &QTimer::timeout, this, &KnobWidget::onAnimationTick);
+        }
+        m_animTimer->start(16);
     }
+
+    m_mousePressed = false;
+    m_dragging = false;
 }
 
 void KnobWidget::updateLabel()
@@ -187,6 +221,48 @@ void KnobWidget::updateLabel()
 
 void KnobWidget::mouseDoubleClickEvent(QMouseEvent *event)
 {
-    QMouseEvent *clickEvent = event;
+    Q_UNUSED(event);
     emit valueChanged(currentValue());
+}
+
+void KnobWidget::startAnimation()
+{
+    m_animStartAngle = m_currentAngle;
+    m_animEndAngle = indexToAngle(m_endIndex);
+    m_animating = true;
+    m_animStartTime = QDateTime::currentMSecsSinceEpoch();
+    m_animDuration = ANIMATION_DURATION_MS;
+
+    if (!m_animTimer) {
+        m_animTimer = new QTimer(this);
+        connect(m_animTimer, &QTimer::timeout, this, &KnobWidget::onAnimationTick);
+    }
+    m_animTimer->start(16);
+}
+
+void KnobWidget::stopAnimation()
+{
+    if (m_animTimer) {
+        m_animTimer->stop();
+    }
+    m_animating = false;
+}
+
+void KnobWidget::onAnimationTick()
+{
+    if (!m_animating) return;
+
+    qint64 elapsedMs = QDateTime::currentMSecsSinceEpoch() - m_animStartTime;
+    double ratio = qBound(0.0, static_cast<double>(elapsedMs) / m_animDuration, 1.0);
+
+    m_currentAngle = m_animStartAngle + (m_animEndAngle - m_animStartAngle) * ratio;
+
+    if (ratio >= 1.0) {
+        m_index = m_endIndex;
+        m_currentAngle = m_animEndAngle;
+        stopAnimation();
+    }
+
+    updateLabel();
+    update();
 }
