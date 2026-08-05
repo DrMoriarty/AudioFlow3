@@ -5,10 +5,12 @@
 #include <QStringList>
 
 class QLabel;
+class QPropertyAnimation;
 
 class KnobWidget : public QWidget
 {
     Q_OBJECT
+    Q_PROPERTY(double currentAngle READ currentAngle WRITE setCurrentAngle)
 
 public:
     explicit KnobWidget(const QStringList &values, QWidget *parent = nullptr);
@@ -16,6 +18,9 @@ public:
     QString currentValue() const;
     int currentIndex() const;
     void setCurrentIndex(int index);
+
+    double currentAngle() const;
+    void setCurrentAngle(double angle);
 
 signals:
     void valueChanged(const QString &value);
@@ -31,9 +36,7 @@ private:
     void updateLabel();
     double indexToAngle(int index) const;
     int angleToNearestIndex(double angle) const;
-    void startAnimation();
-    void stopAnimation();
-    void onAnimationTick();
+    void animateToAngle(double targetAngle, int durationMs);
 
     QStringList m_values;
     int m_index;
@@ -44,21 +47,14 @@ private:
     static constexpr int ANIMATION_DURATION_MS = 250;
     static constexpr int SNAP_DURATION_MS = 125;
 
-    // Mouse interaction state
     bool m_mousePressed = false;
     bool m_dragging = false;
     QPoint m_pressStart;
     int m_dragStartIndex = 0;
 
-    // Animation state
-    bool m_animating = false;
-    int m_endIndex = 0;
-    double m_animStartAngle = 0.0;
-    double m_animEndAngle = 0.0;
     double m_currentAngle = 225.0;
-    QTimer *m_animTimer = nullptr;
-    qint64 m_animStartTime = 0;
-    int m_animDuration = ANIMATION_DURATION_MS;
+    int m_endIndex = 0;
+    QPropertyAnimation *m_anim = nullptr;
 };
 
 #endif // KNOBWIDGET_H
