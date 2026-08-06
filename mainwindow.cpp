@@ -3,7 +3,9 @@
 #include "collapsibleblock.h"
 #include "knobwidget.h"
 #include "equalizergraph.h"
+#include "correctiongraph.h"
 #include "src/fileutils/config.h"
+#include "src/fileutils/readIRFile.h"
 #include "src/audioflow.h"
 
 #include <regex>
@@ -375,6 +377,23 @@ void MainWindow::setupBlocks()
     descLabel->setWordWrap(true);
     ccLayout->addWidget(descLabel);
 
+    m_correctionGraph = new AudioFlow3::CorrectionGraph();
+    m_correctionGraph->setFixedHeight(100);
+    ccLayout->addWidget(m_correctionGraph);
+
+    auto updateCorrectionGraph = [this](const std::string& path) {
+        if (!m_correctionGraph || path.empty()) {
+            if (m_correctionGraph) m_correctionGraph->clear();
+            return;
+        }
+        IRData irData = readIRFile(path);
+        if (!irData.audioDataL.empty())
+            m_correctionGraph->setIRData(irData.audioDataL, irData.audioDataR, static_cast<int>(irData.sampleRate));
+    };
+
+    updateCorrectionGraph(m_config.correctionIRFilePath);
+    m_correctionGraph->setDryWet(static_cast<double>(m_config.correctionDryWet));
+
     QHBoxLayout *irLayout = new QHBoxLayout();
     QComboBox *irCombo = new QComboBox();
     QString corrIRName = QFileInfo(QString::fromStdString(m_config.correctionIRFilePath)).completeBaseName();
@@ -451,21 +470,25 @@ void MainWindow::setupBlocks()
     connect(m_blocks[0], &CollapsibleBlock::toggled, this, [](bool checked) {
         setCorrectionToggle(checked);
     });
-    connect(irCombo, &QComboBox::currentIndexChanged, this, [irCombo](int index) {
+    connect(irCombo, &QComboBox::currentIndexChanged, this, [irCombo, updateCorrectionGraph](int index) {
         QString path = irCombo->itemData(index).toString();
-        if (!path.isEmpty())
+        if (!path.isEmpty()) {
             setCorrectionIRFile(path.toStdString());
+            updateCorrectionGraph(path.toStdString());
+        }
     });
-    connect(loadIrBtn, &QPushButton::clicked, this, [irCombo]() {
+    connect(loadIrBtn, &QPushButton::clicked, this, [irCombo, updateCorrectionGraph]() {
         QString file = QFileDialog::getOpenFileName(nullptr, "Select IR File", QDir::homePath(), "WAV Files (*.wav)");
         if (!file.isEmpty()) {
             setCorrectionIRFile(file.toStdString());
             irCombo->addItem(QFileInfo(file).completeBaseName(), file);
             irCombo->setCurrentIndex(irCombo->count() - 1);
+            updateCorrectionGraph(file.toStdString());
         }
     });
-    connect(mixSlider, &QSlider::valueChanged, this, [](int v) {
+    connect(mixSlider, &QSlider::valueChanged, this, [this](int v) {
         setCorrectionDryWet(static_cast<double>(v) / 100.0);
+        if (m_correctionGraph) m_correctionGraph->setDryWet(static_cast<double>(v) / 100.0);
     });
     connect(gainKnob, &KnobWidget::valueChanged, this, [](const QString &value) {
         QString num = value;
@@ -607,13 +630,13 @@ void MainWindow::setupBlocks()
         }
     }
 
-    QLabel *parametersLabel = new QLabel(tr("Parameters"));
-    eqLayout->addWidget(parametersLabel);
-
     AudioFlow3::EqualizerGraph *eqGraph = new AudioFlow3::EqualizerGraph();
     eqGraph->setFixedHeight(100);
     m_eqGraph = eqGraph;
     eqLayout->addWidget(eqGraph);
+
+    QLabel *parametersLabel = new QLabel(tr("Parameters"));
+    eqLayout->addWidget(parametersLabel);
 
     // Update graph with initial data
     const int defaultHz[] = {31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000};

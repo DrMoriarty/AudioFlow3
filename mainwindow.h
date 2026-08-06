@@ -10,6 +10,7 @@
 #include <QComboBox>
 
 #include "equalizergraph.h"
+#include "correctiongraph.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -64,6 +65,7 @@ private:
     QDoubleSpinBox *m_eqQ[BAND_COUNT] = {};
     QComboBox *m_eqPresetCombo = nullptr;
     AudioFlow3::EqualizerGraph *m_eqGraph = nullptr;
+    AudioFlow3::CorrectionGraph *m_correctionGraph = nullptr;
     bool m_eqPresetLoading = false;
     bool m_toggleGuard = false;
 };
