@@ -19,6 +19,8 @@ qt_add_executable(AudioFlow3
     knobwidget.h
     toggleswitch.cpp
     toggleswitch.h
+    equalizergraph.cpp
+    equalizergraph.h
         src/audioflow.cpp
         src/audioflow.h
         src/permission.mm

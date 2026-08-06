@@ -9,6 +9,8 @@
 #include <QLabel>
 #include <QComboBox>
 
+#include "equalizergraph.h"
+
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class MainWindow;
@@ -61,6 +63,7 @@ private:
     QSpinBox *m_eqGainSpin[BAND_COUNT] = {};
     QDoubleSpinBox *m_eqQ[BAND_COUNT] = {};
     QComboBox *m_eqPresetCombo = nullptr;
+    AudioFlow3::EqualizerGraph *m_eqGraph = nullptr;
     bool m_eqPresetLoading = false;
     bool m_toggleGuard = false;
 };

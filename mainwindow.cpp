@@ -2,6 +2,7 @@
 #include "ui_mainwindow.h"
 #include "collapsibleblock.h"
 #include "knobwidget.h"
+#include "equalizergraph.h"
 #include "src/fileutils/config.h"
 #include "src/audioflow.h"
 
@@ -609,6 +610,25 @@ void MainWindow::setupBlocks()
     QLabel *parametersLabel = new QLabel(tr("Parameters"));
     eqLayout->addWidget(parametersLabel);
 
+    AudioFlow3::EqualizerGraph *eqGraph = new AudioFlow3::EqualizerGraph();
+    eqGraph->setFixedHeight(100);
+    m_eqGraph = eqGraph;
+    eqLayout->addWidget(eqGraph);
+
+    // Update graph with initial data
+    const int defaultHz[] = {31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000};
+    QVector<double> freqs(BAND_COUNT);
+    QVector<double> gains(BAND_COUNT);
+    QVector<double> qs(BAND_COUNT);
+    for (int i = 0; i < BAND_COUNT; ++i) {
+        freqs[i] = i < m_config.equalizerF.size() ? static_cast<double>(m_config.equalizerF[i]) : static_cast<double>(defaultHz[i]);
+        gains[i] = i < m_config.equalizerG.size() ? static_cast<double>(m_config.equalizerG[i]) : 0.0;
+        qs[i] = i < m_config.equalizerQ.size() ? static_cast<double>(m_config.equalizerQ[i]) : 1.0;
+    }
+    eqGraph->setFrequencyData(freqs);
+    eqGraph->setGainData(gains);
+    eqGraph->setQData(qs);
+
     QGridLayout *eqGrid = new QGridLayout();
     eqGrid->setContentsMargins(0, 0, 0, 2);
     eqGrid->setSpacing(2);
@@ -640,8 +660,6 @@ void MainWindow::setupBlocks()
     QSpinBox *gainSpinboxes[bandCount];
     QDoubleSpinBox *qSpinboxes[bandCount];
 
-    int defaultHz[] = {31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000};
-
     for (int i = 0; i < bandCount; ++i) {
         int col = i + 1;
 
@@ -656,6 +674,7 @@ void MainWindow::setupBlocks()
         eqSliders[i] = new QSlider(Qt::Vertical);
         eqSliders[i]->setRange(-12, 12);
         eqSliders[i]->setValue(i < m_config.equalizerG.size() ? static_cast<int>(m_config.equalizerG[i]) : 0);
+        eqSliders[i]->setPageStep(1);
         eqSliders[i]->setFixedHeight(100);
         m_eqGain[i] = eqSliders[i];
         eqGrid->addWidget(eqSliders[i], 1, col, Qt::AlignHCenter);
@@ -772,6 +791,7 @@ void MainWindow::setupBlocks()
     eqContentH += presetLabel->sizeHint().height() + presetCombo->sizeHint().height();
     eqContentH += parametersLabel->sizeHint().height();
     eqContentH += eqLayout->spacing() * 3;
+    eqContentH += 100; // EqualizerGraph
     int sliderH = 100; // fixed slider height
     int spinH = hzSpinBoxes[0]->sizeHint().height();
     int gainH = gainSpinboxes[0]->sizeHint().height();
@@ -793,9 +813,25 @@ void MainWindow::setupBlocks()
         float q = static_cast<float>(m_eqQ[i]->value());
         setEqualizerBand(i, f, q, g);
     };
+
+    auto updateGraph = [this]() {
+        QVector<double> freqs(BAND_COUNT), gains(BAND_COUNT), qs(BAND_COUNT);
+        for (int i = 0; i < BAND_COUNT; ++i) {
+            freqs[i] = static_cast<double>(m_eqHz[i]->value());
+            gains[i] = static_cast<double>(m_eqGainSpin[i]->value());
+            qs[i] = static_cast<double>(m_eqQ[i]->value());
+        }
+        if (m_eqGraph) {
+            m_eqGraph->setFrequencyData(freqs);
+            m_eqGraph->setGainData(gains);
+            m_eqGraph->setQData(qs);
+        }
+    };
+
     for (int i = 0; i < BAND_COUNT; ++i) {
-        connect(m_eqHz[i], &QSpinBox::valueChanged, this, [syncBand, presetCombo, i, this]() {
+        connect(m_eqHz[i], &QSpinBox::valueChanged, this, [syncBand, presetCombo, i, this, updateGraph]() {
             syncBand(i);
+            updateGraph();
             if (!m_eqPresetLoading) {
                 presetCombo->blockSignals(true);
                 presetCombo->setCurrentIndex(-1);
@@ -805,8 +841,9 @@ void MainWindow::setupBlocks()
                 }
             }
         });
-        connect(m_eqGainSpin[i], &QSpinBox::valueChanged, this, [syncBand, presetCombo, i, this]() {
+        connect(m_eqGainSpin[i], &QSpinBox::valueChanged, this, [syncBand, presetCombo, i, this, updateGraph]() {
             syncBand(i);
+            updateGraph();
             if (!m_eqPresetLoading) {
                 presetCombo->blockSignals(true);
                 presetCombo->setCurrentIndex(-1);
@@ -816,8 +853,9 @@ void MainWindow::setupBlocks()
                 }
             }
         });
-        connect(m_eqQ[i], QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [syncBand, presetCombo, i, this]() {
+        connect(m_eqQ[i], QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [syncBand, presetCombo, i, this, updateGraph]() {
             syncBand(i);
+            updateGraph();
             if (!m_eqPresetLoading) {
                 presetCombo->blockSignals(true);
                 presetCombo->setCurrentIndex(-1);
@@ -828,6 +866,10 @@ void MainWindow::setupBlocks()
             }
         });
     }
+
+    connect(presetCombo, &QComboBox::currentIndexChanged, this, [presetCombo, this, updateGraph](int) {
+        updateGraph();
+    });
 
     QWidget *convolverContent = new QWidget();
     QVBoxLayout *cvLayout = new QVBoxLayout(convolverContent);
