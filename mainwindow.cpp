@@ -381,18 +381,19 @@ void MainWindow::setupBlocks()
     m_correctionGraph->setFixedHeight(100);
     ccLayout->addWidget(m_correctionGraph);
 
-    auto updateCorrectionGraph = [this](const std::string& path) {
+    auto updateCorrectionGraph = [this](const std::string& path, double dryWet) {
         if (!m_correctionGraph || path.empty()) {
             if (m_correctionGraph) m_correctionGraph->clear();
             return;
         }
         IRData irData = readIRFile(path);
-        if (!irData.audioDataL.empty())
+        if (!irData.audioDataL.empty()) {
             m_correctionGraph->setIRData(irData.audioDataL, irData.audioDataR, static_cast<int>(irData.sampleRate));
+            m_correctionGraph->setDryWet(dryWet);
+        }
     };
 
-    updateCorrectionGraph(m_config.correctionIRFilePath);
-    m_correctionGraph->setDryWet(static_cast<double>(m_config.correctionDryWet));
+    updateCorrectionGraph(m_config.correctionIRFilePath, m_config.correctionDryWet);
 
     QHBoxLayout *irLayout = new QHBoxLayout();
     QComboBox *irCombo = new QComboBox();
@@ -411,91 +412,74 @@ void MainWindow::setupBlocks()
     irLayout->addWidget(m_correctionLed);
     QPushButton *loadIrBtn = new QPushButton(tr("Load IR"));
     irLayout->addWidget(loadIrBtn);
-    ccLayout->addLayout(irLayout);
 
-    QVBoxLayout *sliderColumn = new QVBoxLayout();
-    sliderColumn->setContentsMargins(0, 0, 0, 0);
-    sliderColumn->setSpacing(4);
-    sliderColumn->addStretch();
-    QHBoxLayout *mixHeaderLayout = new QHBoxLayout();
-    mixHeaderLayout->setContentsMargins(0, 0, 0, 0);
-    QLabel *mixLabel = new QLabel(tr("Dry/Wet Mix"));
-    mixHeaderLayout->addWidget(mixLabel);
-    mixHeaderLayout->addSpacing(10);
-    QLabel *mixValueLabel = new QLabel("50%");
-    mixHeaderLayout->addWidget(mixValueLabel);
-    mixHeaderLayout->addStretch();
-    sliderColumn->addLayout(mixHeaderLayout);
-    QSlider *mixSlider = new QSlider(Qt::Horizontal);
-    mixSlider->setRange(0, 100);
-    mixSlider->setValue(static_cast<int>(m_config.correctionDryWet * 100));
-    connect(mixSlider, &QSlider::valueChanged, this, [mixValueLabel](int v) {
-        mixValueLabel->setText(QString::number(v) + "%");
-    });
-    connect(mixSlider, &QSlider::valueChanged, this, [mixSlider]() {
-        updateSliderColor(mixSlider);
-    });
-    updateSliderColor(mixSlider);
-    mixValueLabel->setText(QString::number(mixSlider->value()) + "%");
-    sliderColumn->addWidget(mixSlider);
-    sliderColumn->addStretch();
-
-    QHBoxLayout *mixKnobLayout = new QHBoxLayout();
-    mixKnobLayout->setContentsMargins(0, 0, 0, 0);
-    mixKnobLayout->setSpacing(8);
-    mixKnobLayout->addLayout(sliderColumn, 1);
-
-    QVBoxLayout *knobLayout = new QVBoxLayout();
-    knobLayout->setContentsMargins(0, 0, 0, 0);
-    knobLayout->setSpacing(2);
-    knobLayout->setAlignment(Qt::AlignCenter);
-    QLabel *gainLabel = new QLabel(tr("Gain"));
-    gainLabel->setAlignment(Qt::AlignCenter);
-    knobLayout->addWidget(gainLabel);
-    KnobWidget *gainKnob = new KnobWidget({"0 dB", "2 dB", "4 dB", "6 dB", "8 dB"});
-    float bestDist = 1000.0f;
-    int bestIdx = 0;
-    const float knobValues[] = {0.0f, 2.0f, 4.0f, 6.0f, 8.0f};
+    QVBoxLayout *mixKnobColumn = new QVBoxLayout();
+    mixKnobColumn->setContentsMargins(0, 0, 0, 0);
+    mixKnobColumn->setSpacing(2);
+    mixKnobColumn->setAlignment(Qt::AlignCenter);
+    QLabel *mixLabel = new QLabel(tr("Dry/Wet"));
+    mixLabel->setAlignment(Qt::AlignCenter);
+    mixKnobColumn->addWidget(mixLabel);
+    KnobWidget *mixKnob = new KnobWidget(0.0, 100.0, 1.0, "%");
+    double mixPct = m_config.correctionDryWet * 100.0;
+    int bestMixIdx = 0;
+    double bestMixDist = 1000.0;
     for (int k = 0; k < 5; ++k) {
-        float dist = fabsf(m_config.correctionPostGain - knobValues[k]);
+        double dist = fabs(mixPct - (k * 25.0));
+        if (dist < bestMixDist) { bestMixDist = dist; bestMixIdx = k; }
+    }
+    mixKnob->setCurrentIndex(bestMixIdx);
+    mixKnobColumn->addWidget(mixKnob);
+    irLayout->addLayout(mixKnobColumn);
+
+    QVBoxLayout *knobColumn = new QVBoxLayout();
+    knobColumn->setContentsMargins(0, 0, 0, 0);
+    knobColumn->setSpacing(2);
+    knobColumn->setAlignment(Qt::AlignCenter);
+    QLabel *gainLabel = new QLabel(tr("Wet Gain"));
+    gainLabel->setAlignment(Qt::AlignCenter);
+    knobColumn->addWidget(gainLabel);
+    KnobWidget *gainKnob = new KnobWidget(0.0, 9.0, 1.0, "dB");
+    double bestDist = 1000.0;
+    int bestIdx = 0;
+    for (int k = 0; k < 5; ++k) {
+        double dist = fabs(m_config.correctionPostGain - (k * 2.0));
         if (dist < bestDist) { bestDist = dist; bestIdx = k; }
     }
     gainKnob->setCurrentIndex(bestIdx);
-    knobLayout->addWidget(gainKnob);
-    mixKnobLayout->addLayout(knobLayout);
-    ccLayout->addLayout(mixKnobLayout);
+    knobColumn->addWidget(gainKnob);
+    irLayout->addLayout(knobColumn);
+    ccLayout->addLayout(irLayout);
 
     m_blocks[0]->setContentWidget(correctingContent);
 
     connect(m_blocks[0], &CollapsibleBlock::toggled, this, [](bool checked) {
         setCorrectionToggle(checked);
     });
-    connect(irCombo, &QComboBox::currentIndexChanged, this, [irCombo, updateCorrectionGraph](int index) {
+    connect(irCombo, &QComboBox::currentIndexChanged, this, [irCombo, mixKnob, updateCorrectionGraph](int index) {
         QString path = irCombo->itemData(index).toString();
         if (!path.isEmpty()) {
             setCorrectionIRFile(path.toStdString());
-            updateCorrectionGraph(path.toStdString());
+            double num = mixKnob->currentNumericValue();
+            updateCorrectionGraph(path.toStdString(), num / 100.0);
         }
     });
-    connect(loadIrBtn, &QPushButton::clicked, this, [irCombo, updateCorrectionGraph]() {
+    connect(loadIrBtn, &QPushButton::clicked, this, [irCombo, mixKnob, updateCorrectionGraph]() {
         QString file = QFileDialog::getOpenFileName(nullptr, "Select IR File", QDir::homePath(), "WAV Files (*.wav)");
         if (!file.isEmpty()) {
             setCorrectionIRFile(file.toStdString());
             irCombo->addItem(QFileInfo(file).completeBaseName(), file);
             irCombo->setCurrentIndex(irCombo->count() - 1);
-            updateCorrectionGraph(file.toStdString());
+            double num = mixKnob->currentNumericValue();
+            updateCorrectionGraph(file.toStdString(), num / 100.0);
         }
     });
-    connect(mixSlider, &QSlider::valueChanged, this, [this](int v) {
-        setCorrectionDryWet(static_cast<double>(v) / 100.0);
-        if (m_correctionGraph) m_correctionGraph->setDryWet(static_cast<double>(v) / 100.0);
+    connect(mixKnob, &KnobWidget::valueChanged, this, [this](double value) {
+        setCorrectionDryWet(value / 100.0);
+        if (m_correctionGraph) m_correctionGraph->setDryWet(value / 100.0);
     });
-    connect(gainKnob, &KnobWidget::valueChanged, this, [](const QString &value) {
-        QString num = value;
-        num.remove(" dB");
-        bool ok;
-        float db = num.toFloat(&ok);
-        if (ok) setCorrectionPostGain(db);
+    connect(gainKnob, &KnobWidget::valueChanged, this, [](double value) {
+        setCorrectionPostGain(value);
     });
 
     QWidget *preampContent = new QWidget();

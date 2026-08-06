@@ -9,9 +9,12 @@
 #include <QPropertyAnimation>
 #include <cmath>
 
-KnobWidget::KnobWidget(const QStringList &values, QWidget *parent)
+KnobWidget::KnobWidget(double min, double max, double step, const QString &suffix, QWidget *parent)
     : QWidget(parent)
-    , m_values(values)
+    , m_min(min)
+    , m_max(max)
+    , m_step(step)
+    , m_suffix(suffix)
     , m_index(0)
 {
     QVBoxLayout *layout = new QVBoxLayout(this);
@@ -32,13 +35,16 @@ KnobWidget::KnobWidget(const QStringList &values, QWidget *parent)
         updateLabel();
     });
 
+    m_totalSteps = static_cast<int>((m_max - m_min) / m_step);
+    m_dragStepPx = DRAG_STEP_PX_BASE / m_totalSteps;
+
     m_currentAngle = indexToAngle(m_index);
     updateLabel();
 }
 
-QString KnobWidget::currentValue() const
+double KnobWidget::currentNumericValue() const
 {
-    return m_values.value(m_index);
+    return m_min + static_cast<double>(m_index) * m_step;
 }
 
 int KnobWidget::currentIndex() const
@@ -48,7 +54,7 @@ int KnobWidget::currentIndex() const
 
 void KnobWidget::setCurrentIndex(int index)
 {
-    if (index >= 0 && index < m_values.size()) {
+    if (index >= 0 && index <= static_cast<int>((m_max - m_min) / m_step)) {
         m_anim->stop();
         m_index = index;
         m_currentAngle = indexToAngle(index);
@@ -70,17 +76,18 @@ void KnobWidget::setCurrentAngle(double angle)
 
 double KnobWidget::indexToAngle(int index) const
 {
-    if (m_values.size() <= 1)
+    if (m_max == m_min)
         return 225.0;
-    return 225.0 + static_cast<double>(index) / static_cast<double>(m_values.size() - 1) * (-270.0);
+    return 225.0 + static_cast<double>(index) / static_cast<double>((m_max - m_min) / m_step) * (-270.0);
 }
 
 int KnobWidget::angleToNearestIndex(double angle) const
 {
-    if (m_values.size() <= 1)
+    if (m_max == m_min)
         return 0;
-    double exact = (angle - 225.0) / (-270.0 / (m_values.size() - 1));
-    return qBound(0, static_cast<int>(std::round(exact)), m_values.size() - 1);
+    double totalSteps = (m_max - m_min) / m_step;
+    double exact = (angle - 225.0) / (-270.0 / totalSteps);
+    return qBound(0, static_cast<int>(std::round(exact)), static_cast<int>(totalSteps));
 }
 
 void KnobWidget::paintEvent(QPaintEvent *event)
@@ -97,10 +104,10 @@ void KnobWidget::paintEvent(QPaintEvent *event)
     int cy = knobY + radius;
 
     p.setPen(QPen(QColor("#808080"), 2));
-    p.setBrush(QColor("#404040"));
+    p.setBrush(QColor("#404080"));
     p.drawEllipse(cx - radius, cy - radius, knobSize, knobSize);
 
-    if (m_values.size() > 1) {
+    if ((m_max - m_min) / m_step > 1) {
         double rad = qDegreesToRadians(m_currentAngle);
         int lineLen = radius - 4;
         int ex = cx + static_cast<int>(lineLen * qCos(rad));
@@ -136,6 +143,7 @@ void KnobWidget::mousePressEvent(QMouseEvent *event)
             m_index = m_endIndex;
             updateLabel();
             animateToAngle(indexToAngle(m_endIndex), ANIMATION_DURATION_MS);
+            emit valueChanged(currentNumericValue());
         }
     }
 }
@@ -159,11 +167,12 @@ void KnobWidget::mouseMoveEvent(QMouseEvent *event)
 
     int yDelta = pos.y() - m_pressStart.y();
     int xDelta = pos.x() - m_pressStart.x();
-    double anglePerStep = -270.0 / (m_values.size() - 1);
-    double angleDelta = ((-static_cast<double>(yDelta) + static_cast<double>(xDelta)) / DRAG_STEP_PX) * anglePerStep;
+    double totalSteps = (m_max - m_min) / m_step;
+    double anglePerStep = -270.0 / totalSteps;
+    double angleDelta = ((-static_cast<double>(yDelta) + static_cast<double>(xDelta)) / m_dragStepPx) * anglePerStep;
     double targetAngle = indexToAngle(m_dragStartIndex) + angleDelta;
 
-    double minAngle = indexToAngle(m_values.size() - 1);
+    double minAngle = indexToAngle(static_cast<int>(totalSteps));
     double maxAngle = indexToAngle(0);
     m_currentAngle = qBound(minAngle, targetAngle, maxAngle);
 
@@ -171,6 +180,7 @@ void KnobWidget::mouseMoveEvent(QMouseEvent *event)
     if (nearest != m_index) {
         m_index = nearest;
         updateLabel();
+        emit valueChanged(currentNumericValue());
     }
     update();
 }
@@ -181,17 +191,19 @@ void KnobWidget::mouseReleaseEvent(QMouseEvent *event)
         return;
 
     if (!m_dragging) {
-        if (m_index < m_values.size() - 1) {
+        if (m_index < static_cast<int>((m_max - m_min) / m_step) - 1) {
             m_endIndex = m_index + 1;
             m_index = m_endIndex;
             updateLabel();
             animateToAngle(indexToAngle(m_endIndex), ANIMATION_DURATION_MS);
+            emit valueChanged(currentNumericValue());
         }
     } else {
         int nearest = angleToNearestIndex(m_currentAngle);
         m_index = nearest;
         m_endIndex = nearest;
         animateToAngle(indexToAngle(nearest), SNAP_DURATION_MS);
+        emit valueChanged(currentNumericValue());
     }
 
     m_mousePressed = false;
@@ -200,13 +212,20 @@ void KnobWidget::mouseReleaseEvent(QMouseEvent *event)
 
 void KnobWidget::updateLabel()
 {
-    m_label->setText(m_values.value(m_index));
+    double value = currentNumericValue();
+    QString numStr;
+    if (m_suffix.isEmpty()) {
+        numStr = QString::number(value, 'f', 0);
+    } else {
+        numStr = QString::number(value, 'f', 0) + " " + m_suffix;
+    }
+    m_label->setText(numStr);
 }
 
 void KnobWidget::mouseDoubleClickEvent(QMouseEvent *event)
 {
     Q_UNUSED(event);
-    emit valueChanged(currentValue());
+    emit valueChanged(currentNumericValue());
 }
 
 void KnobWidget::animateToAngle(double targetAngle, int durationMs)

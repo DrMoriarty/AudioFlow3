@@ -2,7 +2,6 @@
 #define KNOBWIDGET_H
 
 #include <QWidget>
-#include <QStringList>
 
 class QLabel;
 class QPropertyAnimation;
@@ -13,9 +12,9 @@ class KnobWidget : public QWidget
     Q_PROPERTY(double currentAngle READ currentAngle WRITE setCurrentAngle)
 
 public:
-    explicit KnobWidget(const QStringList &values, QWidget *parent = nullptr);
+    explicit KnobWidget(double min, double max, double step, const QString &suffix = QString(), QWidget *parent = nullptr);
 
-    QString currentValue() const;
+    double currentNumericValue() const;
     int currentIndex() const;
     void setCurrentIndex(int index);
 
@@ -23,7 +22,7 @@ public:
     void setCurrentAngle(double angle);
 
 signals:
-    void valueChanged(const QString &value);
+    void valueChanged(double value);
 
 protected:
     void paintEvent(QPaintEvent *event) override;
@@ -38,19 +37,24 @@ private:
     int angleToNearestIndex(double angle) const;
     void animateToAngle(double targetAngle, int durationMs);
 
-    QStringList m_values;
+    double m_min;
+    double m_max;
+    double m_step;
+    QString m_suffix;
     int m_index;
     QLabel *m_label;
 
     static constexpr int CLICK_MAX_PX = 16;
-    static constexpr int DRAG_STEP_PX = 60;
     static constexpr int ANIMATION_DURATION_MS = 250;
     static constexpr int SNAP_DURATION_MS = 125;
+    static constexpr int DRAG_STEP_PX_BASE = 300;
 
     bool m_mousePressed = false;
     bool m_dragging = false;
     QPoint m_pressStart;
     int m_dragStartIndex = 0;
+    int m_totalSteps = 0;
+    int m_dragStepPx = 0;
 
     double m_currentAngle = 225.0;
     int m_endIndex = 0;
