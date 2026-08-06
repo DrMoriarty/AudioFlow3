@@ -879,12 +879,9 @@ void MainWindow::setupBlocks()
     });
 
     QWidget *convolverContent = new QWidget();
-    QVBoxLayout *cvLayout = new QVBoxLayout(convolverContent);
+    QHBoxLayout *cvLayout = new QHBoxLayout(convolverContent);
     cvLayout->setContentsMargins(8, 4, 8, 4);
     cvLayout->setSpacing(4);
-
-    QLabel *spaceLabel = new QLabel(tr("Space"));
-    cvLayout->addWidget(spaceLabel);
 
     QHBoxLayout *spaceRowLayout = new QHBoxLayout();
     spaceRowLayout->setContentsMargins(0, 0, 0, 0);
@@ -932,33 +929,47 @@ void MainWindow::setupBlocks()
     });
 
     spaceRowLayout->addWidget(customBtn);
-    cvLayout->addLayout(spaceRowLayout);
 
-    QHBoxLayout *wetMixHeader = new QHBoxLayout();
-    wetMixHeader->setContentsMargins(0, 0, 0, 0);
-    wetMixHeader->setSpacing(8);
-    QLabel *cvMixLabel = new QLabel(tr("Dry/Wet Mix"));
-    wetMixHeader->addWidget(cvMixLabel);
-    QLabel *cvMixValue = new QLabel("50%");
-    wetMixHeader->addWidget(cvMixValue);
-    wetMixHeader->addStretch();
-    cvLayout->addLayout(wetMixHeader);
+    QVBoxLayout *leftColumn = new QVBoxLayout();
+    leftColumn->setContentsMargins(0, 0, 0, 0);
+    leftColumn->setSpacing(4);
+    QLabel *spaceLabel = new QLabel(tr("Space"));
+    leftColumn->addWidget(spaceLabel);
+    QLabel *spacer = new QLabel();
+    spacer->setContentsMargins(0, 0, 0, 0);
+    spacer->setFixedSize(1, 1);
+    leftColumn->addWidget(spacer);
+    leftColumn->addStretch(1);
+    spaceRowLayout->setAlignment(Qt::AlignCenter);
+    leftColumn->addLayout(spaceRowLayout);
+    QLabel *bottomSpacer = new QLabel();
+    bottomSpacer->setContentsMargins(0, 0, 0, 0);
+    bottomSpacer->setFixedSize(1, 18);
+    leftColumn->addWidget(bottomSpacer);
+    cvLayout->addLayout(leftColumn);
 
-    QSlider *cvMixSlider = new QSlider(Qt::Horizontal);
-    cvMixSlider->setRange(0, 100);
-    cvMixSlider->setValue(static_cast<int>(m_config.reverbDryWet * 100));
-    connect(cvMixSlider, &QSlider::valueChanged, this, [cvMixValue](int v) {
-        cvMixValue->setText(QString::number(v) + "%");
+    QVBoxLayout *rightColumn = new QVBoxLayout();
+    rightColumn->setContentsMargins(0, 0, 0, 0);
+    rightColumn->setSpacing(2);
+    rightColumn->setAlignment(Qt::AlignCenter);
+    QLabel *cvMixLabel = new QLabel(tr("Dry/Wet"));
+    cvMixLabel->setAlignment(Qt::AlignCenter);
+    rightColumn->addWidget(cvMixLabel);
+    KnobWidget *cvMixKnob = new KnobWidget(0.0, 100.0, 1.0, "%");
+    int cvBestIdx = 0;
+    double cvBestDist = 1000.0;
+    double cvMixPct = m_config.reverbDryWet * 100.0;
+    for (int k = 0; k < 101; ++k) {
+        double dist = fabs(cvMixPct - static_cast<double>(k));
+        if (dist < cvBestDist) { cvBestDist = dist; cvBestIdx = k; }
+    }
+    cvMixKnob->setCurrentIndex(cvBestIdx);
+    rightColumn->addWidget(cvMixKnob);
+    cvLayout->addLayout(rightColumn);
+
+    connect(cvMixKnob, &KnobWidget::valueChanged, this, [this](double value) {
+        setReverbDryWet(value / 100.0);
     });
-    connect(cvMixSlider, &QSlider::valueChanged, this, [cvMixSlider]() {
-        updateSliderColor(cvMixSlider);
-    });
-    updateSliderColor(cvMixSlider);
-    connect(cvMixSlider, &QSlider::valueChanged, this, [](int v) {
-        setReverbDryWet(static_cast<double>(v) / 100.0);
-    });
-    cvMixValue->setText(QString::number(cvMixSlider->value()) + "%");
-    cvLayout->addWidget(cvMixSlider);
 
     m_blocks[3]->setContentWidget(convolverContent);
 
