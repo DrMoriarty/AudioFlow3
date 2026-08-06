@@ -2,7 +2,9 @@
 
 #include <QPainter>
 #include <QMouseEvent>
+#include <QWheelEvent>
 #include <QLabel>
+#include <QDateTime>
 #include <QVBoxLayout>
 #include <QLineF>
 #include <QtMath>
@@ -39,6 +41,7 @@ KnobWidget::KnobWidget(double min, double max, double step, const QString &suffi
     m_dragStepPx = DRAG_STEP_PX_BASE / m_totalSteps;
 
     m_currentAngle = indexToAngle(m_index);
+    m_wheelDelta = 0;
     updateLabel();
 }
 
@@ -226,6 +229,24 @@ void KnobWidget::mouseDoubleClickEvent(QMouseEvent *event)
 {
     Q_UNUSED(event);
     emit valueChanged(currentNumericValue());
+}
+
+void KnobWidget::wheelEvent(QWheelEvent *event)
+{
+    int totalSteps = static_cast<int>((m_max - m_min) / m_step);
+    int maxIndex = totalSteps - 1;
+
+    if (event->angleDelta().y() > 0) {
+        if (m_index > 0) {
+            setCurrentIndex(m_index - 1);
+            emit valueChanged(currentNumericValue());
+        }
+    } else if (event->angleDelta().y() < 0) {
+        if (m_index <= maxIndex) {
+            setCurrentIndex(m_index + 1);
+            emit valueChanged(currentNumericValue());
+        }
+    }
 }
 
 void KnobWidget::animateToAngle(double targetAngle, int durationMs)

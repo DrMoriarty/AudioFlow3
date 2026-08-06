@@ -5,6 +5,7 @@
 
 class QLabel;
 class QPropertyAnimation;
+class QWheelEvent;
 
 class KnobWidget : public QWidget
 {
@@ -30,6 +31,7 @@ protected:
     void mouseMoveEvent(QMouseEvent *event) override;
     void mouseReleaseEvent(QMouseEvent *event) override;
     void mouseDoubleClickEvent(QMouseEvent *event) override;
+    void wheelEvent(QWheelEvent *event) override;
 
 private:
     void updateLabel();
@@ -55,6 +57,7 @@ private:
     int m_dragStartIndex = 0;
     int m_totalSteps = 0;
     int m_dragStepPx = 0;
+    int m_wheelDelta = 0;
 
     double m_currentAngle = 225.0;
     int m_endIndex = 0;
