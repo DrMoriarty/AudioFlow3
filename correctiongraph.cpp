@@ -163,7 +163,7 @@ void CorrectionGraph::paintEvent(QPaintEvent *) {
         drawFrequencyMarks(painter);
         drawDBMarks(painter);
         drawGraph(painter, correctionPoints, Qt::blue, QColor(0, 0, 255, 100));
-        drawGraph(painter, originalPoints, Qt::white, Qt::NoBrush);
+        drawGraph(painter, originalPoints, Qt::yellow, Qt::NoBrush);
     } else {
         drawAxes(painter);
         drawFrequencyMarks(painter);
@@ -254,7 +254,7 @@ void CorrectionGraph::drawFrequencyMarks(QPainter& painter) const {
     }
 
     painter.setPen(Qt::gray);
-    QVector<double> marks2 = {20, 30, 40, 50, 200, 300, 400, 500, 2000, 3000, 4000, 5000};
+    QVector<double> marks2 = {20, 30, 40, 50, 200, 300, 400, 500, 2000, 3000, 4000, 5000, 20000};
     for (double f : marks2) {
         QPointF point = convertToScreenCoordinates(f, -24.0);
         painter.drawLine(point, QPointF(point.x(), 0));
@@ -281,6 +281,7 @@ void CorrectionGraph::drawGraph(QPainter& painter, const QVector<QPointF>& point
         QVector<QPointF> fillPoints = points;
         fillPoints.append(QPointF(width(), height()));
         fillPoints.append(QPointF(0, height()));
+        painter.setPen(Qt::NoPen);
         painter.setBrush(fillColor);
         painter.drawPolygon(fillPoints);
     }

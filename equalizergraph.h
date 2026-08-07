@@ -16,6 +16,7 @@ public:
     void setGainData(const QVector<double>& gains);
     void setQData(const QVector<double>& qValues);
     void setSampleRate(int sampleRate);
+    void setControlData(const QVector<double>& frequencies, const QVector<double>& gains);
 
     // Required for Qt's painting system
     void paintEvent(QPaintEvent *event) override;
@@ -28,6 +29,7 @@ private:
     int m_sampleRate;
     bool m_dirty = true;
     QVector<QPointF> m_cachedControlPoints;
+    QVector<QPointF> m_cachedControlPointsRaw;
 
     // Graph generation with per-point summation of all band contributions
     QVector<QPointF> generateControlPoints() const;
@@ -36,6 +38,7 @@ private:
     void drawAxes(QPainter& painter) const;
     void drawFrequencyMarks(QPainter& painter) const;
     void drawGainMarks(QPainter& painter) const;
+    void drawControlPoints(QPainter& painter) const;
     void drawGraph(QPainter& painter, const QVector<QPointF>& points) const;
 };
 

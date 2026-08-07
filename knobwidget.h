@@ -14,6 +14,7 @@ class KnobWidget : public QWidget
 
 public:
     explicit KnobWidget(double min, double max, double step, const QString &suffix = QString(), QWidget *parent = nullptr);
+explicit KnobWidget(double min, double max, double step, double initialValue, const QString &suffix = QString(), QWidget *parent = nullptr);
 
     double currentNumericValue() const;
     int currentIndex() const;

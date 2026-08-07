@@ -420,15 +420,7 @@ void MainWindow::setupBlocks()
     QLabel *mixLabel = new QLabel(tr("Dry/Wet"));
     mixLabel->setAlignment(Qt::AlignCenter);
     mixKnobColumn->addWidget(mixLabel);
-    KnobWidget *mixKnob = new KnobWidget(0.0, 100.0, 1.0, "%");
-    double mixPct = m_config.correctionDryWet * 100.0;
-    int bestMixIdx = 0;
-    double bestMixDist = 1000.0;
-    for (int k = 0; k < 5; ++k) {
-        double dist = fabs(mixPct - (k * 25.0));
-        if (dist < bestMixDist) { bestMixDist = dist; bestMixIdx = k; }
-    }
-    mixKnob->setCurrentIndex(bestMixIdx);
+    KnobWidget *mixKnob = new KnobWidget(0.0, 100.0, 1.0, m_config.correctionDryWet * 100.0, "%");
     mixKnobColumn->addWidget(mixKnob);
     irLayout->addLayout(mixKnobColumn);
 
@@ -439,14 +431,7 @@ void MainWindow::setupBlocks()
     QLabel *gainLabel = new QLabel(tr("Wet Gain"));
     gainLabel->setAlignment(Qt::AlignCenter);
     knobColumn->addWidget(gainLabel);
-    KnobWidget *gainKnob = new KnobWidget(0.0, 9.0, 1.0, "dB");
-    double bestDist = 1000.0;
-    int bestIdx = 0;
-    for (int k = 0; k < 5; ++k) {
-        double dist = fabs(m_config.correctionPostGain - (k * 2.0));
-        if (dist < bestDist) { bestDist = dist; bestIdx = k; }
-    }
-    gainKnob->setCurrentIndex(bestIdx);
+    KnobWidget *gainKnob = new KnobWidget(0.0, 9.0, 1.0, m_config.correctionPostGain, "dB");
     knobColumn->addWidget(gainKnob);
     irLayout->addLayout(knobColumn);
     ccLayout->addLayout(irLayout);
@@ -635,6 +620,7 @@ void MainWindow::setupBlocks()
     eqGraph->setFrequencyData(freqs);
     eqGraph->setGainData(gains);
     eqGraph->setQData(qs);
+    eqGraph->setControlData(freqs, gains);
 
     QGridLayout *eqGrid = new QGridLayout();
     eqGrid->setContentsMargins(0, 0, 0, 2);
@@ -832,6 +818,7 @@ void MainWindow::setupBlocks()
             m_eqGraph->setFrequencyData(freqs);
             m_eqGraph->setGainData(gains);
             m_eqGraph->setQData(qs);
+            m_eqGraph->setControlData(freqs, gains);
         }
     };
 
@@ -955,15 +942,7 @@ void MainWindow::setupBlocks()
     QLabel *cvMixLabel = new QLabel(tr("Dry/Wet"));
     cvMixLabel->setAlignment(Qt::AlignCenter);
     rightColumn->addWidget(cvMixLabel);
-    KnobWidget *cvMixKnob = new KnobWidget(0.0, 100.0, 1.0, "%");
-    int cvBestIdx = 0;
-    double cvBestDist = 1000.0;
-    double cvMixPct = m_config.reverbDryWet * 100.0;
-    for (int k = 0; k < 101; ++k) {
-        double dist = fabs(cvMixPct - static_cast<double>(k));
-        if (dist < cvBestDist) { cvBestDist = dist; cvBestIdx = k; }
-    }
-    cvMixKnob->setCurrentIndex(cvBestIdx);
+    KnobWidget *cvMixKnob = new KnobWidget(0.0, 100.0, 1.0, m_config.reverbDryWet * 100.0, "%");
     rightColumn->addWidget(cvMixKnob);
     cvLayout->addLayout(rightColumn);
 

@@ -12,13 +12,21 @@
 #include <cmath>
 
 KnobWidget::KnobWidget(double min, double max, double step, const QString &suffix, QWidget *parent)
+    : KnobWidget(min, max, step, 0.0, suffix, parent)
+{
+}
+
+KnobWidget::KnobWidget(double min, double max, double step, double initialValue, const QString &suffix, QWidget *parent)
     : QWidget(parent)
     , m_min(min)
     , m_max(max)
     , m_step(step)
     , m_suffix(suffix)
-    , m_index(0)
+    , m_index(static_cast<int>((initialValue - min) / step))
 {
+    if (m_index < 0) m_index = 0;
+    if (m_index > static_cast<int>((m_max - m_min) / m_step)) m_index = static_cast<int>((m_max - m_min) / m_step);
+
     QVBoxLayout *layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(2);
@@ -236,15 +244,22 @@ void KnobWidget::wheelEvent(QWheelEvent *event)
     int totalSteps = static_cast<int>((m_max - m_min) / m_step);
     int maxIndex = totalSteps - 1;
 
-    if (event->angleDelta().y() > 0) {
-        if (m_index > 0) {
+    double thresholdAngle = std::abs(180.0 / totalSteps);
+    double wheelDeltaAngle = static_cast<double>(event->angleDelta().y());
+
+    m_wheelDelta += wheelDeltaAngle;
+
+    while (std::abs(m_wheelDelta) >= thresholdAngle) {
+        if (m_wheelDelta > 0 && m_index > 0) {
             setCurrentIndex(m_index - 1);
+            m_wheelDelta -= thresholdAngle;
             emit valueChanged(currentNumericValue());
-        }
-    } else if (event->angleDelta().y() < 0) {
-        if (m_index <= maxIndex) {
+        } else if (m_wheelDelta < 0 && m_index <= maxIndex) {
             setCurrentIndex(m_index + 1);
+            m_wheelDelta += thresholdAngle;
             emit valueChanged(currentNumericValue());
+        } else {
+            break;
         }
     }
 }

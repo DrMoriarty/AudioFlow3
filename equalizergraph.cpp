@@ -36,6 +36,15 @@ void EqualizerGraph::setSampleRate(int sampleRate) {
     update();
 }
 
+void EqualizerGraph::setControlData(const QVector<double>& frequencies, const QVector<double>& gains) {
+    m_cachedControlPointsRaw.clear();
+    for (size_t i = 0; i < frequencies.size(); ++i) {
+        m_cachedControlPointsRaw.append({frequencies[i], gains[i]});
+    }
+    m_dirty = true;
+    update();
+}
+
 void EqualizerGraph::showEvent(QShowEvent *event) {
     update();
 }
@@ -64,6 +73,9 @@ void EqualizerGraph::paintEvent(QPaintEvent *event) {
 
     // Draw the equalizer graph
     drawGraph(painter, graphPoints);
+
+    // Draw individual control points
+    drawControlPoints(painter);
 }
 
 QVector<QPointF> EqualizerGraph::generateControlPoints() const {
@@ -157,7 +169,7 @@ void EqualizerGraph::drawFrequencyMarks(QPainter& painter) const {
     }
 
     painter.setPen(Qt::gray);
-    QVector<double> marks2 = {20, 30, 40, 50, 200, 300, 400, 500, 2000, 3000, 4000, 5000};
+    QVector<double> marks2 = {20, 30, 40, 50, 200, 300, 400, 500, 2000, 3000, 4000, 5000, 20000};
     for (double f : marks2) {
         QPointF point = convertToScreenCoordinates(f, -12.0);
         painter.drawLine(point, QPointF(point.x(), 0));
@@ -173,11 +185,21 @@ void EqualizerGraph::drawGainMarks(QPainter& painter) const {
     }
 }
 
+void EqualizerGraph::drawControlPoints(QPainter& painter) const {
+    if (m_cachedControlPointsRaw.isEmpty()) return;
+
+    for (const auto& raw : m_cachedControlPointsRaw) {
+        QPointF screen = convertToScreenCoordinates(raw.x(), raw.y());
+        painter.setPen(Qt::white);
+        painter.setBrush(Qt::yellow);
+        painter.drawEllipse(screen, 3, 3);
+    }
+}
+
 void EqualizerGraph::drawGraph(QPainter& painter, const QVector<QPointF>& points) const {
     QPen graphPen(Qt::blue);
     graphPen.setWidthF(3.0);
     painter.setPen(graphPen);
-    painter.setBrush(Qt::blue);
     painter.setBrush(Qt::NoBrush);
     painter.drawPolyline(points);
 
@@ -185,6 +207,7 @@ void EqualizerGraph::drawGraph(QPainter& painter, const QVector<QPointF>& points
     QVector<QPointF> fillPoints = points;
     fillPoints.append(QPointF(width(), height()));
     fillPoints.append(QPointF(0, height()));
+    painter.setPen(Qt::NoPen);
     painter.setBrush(QColor(0, 0, 255, 100));
     painter.drawPolygon(fillPoints);
 }
