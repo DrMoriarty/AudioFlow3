@@ -7,7 +7,7 @@ R05,Audio Lab,University of Rostock,Listening room / audio lab,5.00 x 5.75 x 3.0
 R06,Seminar Room,TU Ilmenau,Seminar room,5.00 x 5.00,Yes,0.438,KEMAR,3,±180°,0°,C1
 R07,Conference Room,TU Ilmenau,Small conference room,10.31 x 5.76 x 3.10,Yes,0.403,"KEMAR 45BA with large ears (C1,C2) and small ears (C3)",2.5,±180°,0°,"C1,C2,C3"
 R08,Room Spirit,TU Berlin,Small meeting room,5.50 x 4.50,Yes,"0.367 (C1), 0.543 (C2)",KEMAR 45BA with large ears,2,±120°,0°,C1
-R09,Adream Laboratory,LAAS-CNRS Toulouse,Apartment-like environment / laboratory,N/A,Yes,"0.414 (C1), 0.702 (C2)",KEMAR 45BB-4,4.8,±90°,0°,C1
+R09,Adream Laboratory,LAAS-CNRS Toulouse,Apartment-like environment / laboratory,N/A,Yes,"0.414 (C1), 0.702 (C2)",KEMAR 45BB-4,4.8,±90°,0°,"C1,C2"
 R10,Room Auditorium 3,TU Berlin,Lecture room / auditorium,10.00 x 9.00,Yes,"0.422 (C1), 0.738 (C2)",KEMAR 45BA with large ears,4,±180°,0°,C1
 R11,Small Broadcast Studio,WDR Broadcast Studios,Small studio,17.33 x 11.07 x 6.20,Yes,"0.388 (C1), 0.697 (C2)",Neumann KU100,6.94,±180°,0°,C1
 R12,Office,University of Surrey,Medium-sized office,5.72 x 6.64 x 2.30,Yes,0.351,Neutrik Cortex mk.2 HATS,1.5,±90°,0°,C1

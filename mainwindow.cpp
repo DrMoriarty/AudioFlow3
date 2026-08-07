@@ -1092,7 +1092,7 @@ void MainWindow::setupBlocks()
         showOrHide(valDist,     nullptr, sv(r.sourceDistance, selCfg, "m"));
     };
 
-    auto updateConfigOptions = [bnCfgCombo, bnCfgLabel, roomInfos, bnRoomCombo]() {
+    auto updateConfigOptions = [bnCfgCombo, bnCfgLabel, roomInfos, bnRoomCombo, this]() {
         std::string roomId = bnRoomCombo->currentData().toString().toStdString();
         auto it = std::find_if(roomInfos.begin(), roomInfos.end(),
             [&](const RoomInfoData& r){ return r.id == roomId; });
@@ -1112,6 +1112,19 @@ void MainWindow::setupBlocks()
         } else {
             bnCfgCombo->addItem("C1");
         }
+        bnCfgCombo->blockSignals(true);
+        int savedCfgIdx = -1;
+        for (int i = 0; i < bnCfgCombo->count(); ++i) {
+            if (bnCfgCombo->itemText(i).toStdString() == m_config.binauralConfig) {
+                bnCfgCombo->setCurrentIndex(i);
+                savedCfgIdx = i;
+                break;
+            }
+        }
+        if (savedCfgIdx < 0 && bnCfgCombo->count() > 0) {
+            bnCfgCombo->setCurrentIndex(0);
+        }
+        m_config.binauralConfig = bnCfgCombo->currentText().toStdString();
         bnCfgCombo->blockSignals(false);
         bool multipleCfg = bnCfgCombo->count() > 1;
         bnCfgCombo->setEnabled(multipleCfg);
@@ -1178,18 +1191,28 @@ void MainWindow::setupBlocks()
 
     // Restore saved room → config → angle from config
     {
+        int roomIdx = -1;
         for (int i = 0; i < bnRoomCombo->count(); ++i) {
             if (bnRoomCombo->itemData(i).toString().toStdString() == m_config.binauralRoom) {
                 bnRoomCombo->setCurrentIndex(i);
+                roomIdx = i;
                 break;
             }
         }
+        std::string savedCfg = m_config.binauralConfig;
+        int cfgIdx = -1;
         for (int i = 0; i < bnCfgCombo->count(); ++i) {
-            if (bnCfgCombo->itemText(i).toStdString() == m_config.binauralConfig) {
+            if (bnCfgCombo->itemText(i).toStdString() == savedCfg) {
                 bnCfgCombo->setCurrentIndex(i);
+                cfgIdx = i;
                 break;
             }
         }
+        if (cfgIdx < 0 && bnCfgCombo->count() > 0) {
+            bnCfgCombo->setCurrentIndex(0);
+            savedCfg = bnCfgCombo->currentText().toStdString();
+        }
+        m_config.binauralConfig = savedCfg;
     }
 
     bnTrueStereo->setChecked(m_config.binauralTrueStereo);

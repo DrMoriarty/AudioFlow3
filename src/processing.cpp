@@ -3,6 +3,7 @@
 //
 
 #include "processing.h"
+#include "./fileutils/globals.h"
 #include <thread>
 #include <mutex>
 #include "iostream"
@@ -221,6 +222,7 @@ void Processing::setBinauralConfig(const std::string& config) {
 void Processing::setBinauralRoom(const std::string& room, const std::string& configOverride) {
     std::lock_guard<std::mutex> lock(swapMutex);
     binauralRenderer->setDir(room, configOverride);
+    if (!configOverride.empty()) gConfig->binauralConfig = configOverride;
 }
 
 void Processing::setBinauralTrueStereo(bool enabled) {

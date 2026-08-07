@@ -11,6 +11,7 @@
 
 #include "equalizergraph.h"
 #include "correctiongraph.h"
+#include "src/fileutils/config.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -20,7 +21,6 @@ QT_END_NAMESPACE
 
 class CollapsibleBlock;
 class QWidget;
-class Config;
 class LedIndicator;
 
 class MainWindow : public QMainWindow
@@ -42,7 +42,7 @@ private:
     static void updateSliderColor(QSlider *slider);
 
     Ui::MainWindow *ui;
-    const Config &m_config;
+    Config m_config;
     QList<CollapsibleBlock *> m_blocks;
     QWidget *m_eqContent = nullptr;
     int m_eqContentHeight = 0;
