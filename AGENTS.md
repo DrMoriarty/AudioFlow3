@@ -4,20 +4,27 @@
 Qt6 Desktop Application (C++ with CMake)
 
 ## Key Files
-- `CMakeLists.txt` - Build configuration (links Qt6, CoreAudio, Accelerate, libsndfile)
+- `CMakeLists.txt` - Build configuration (links Qt6, CoreAudio, Accelerate, libsndfile, libwavpack)
 - `main.cpp` - Application entry point
 - `mainwindow.cpp/h` - Main window implementation
 - `mainwindow.ui` - Qt Designer UI file
 - `collapsibleblock.cpp/h` - Collapsible block widget component
 - `knobwidget.cpp/h` - Custom knob (rotary) control for fixed dB values
 - `toggleswitch.cpp/h` - Toggle switch widget
+- `azimuthselector.cpp/h` - Azimuth angle selector widget (arc UI with mouse drag, wheel, animation)
+- `correctiongraph.cpp/h` - Correction IR frequency response graph (FFT magnitude, Catmull-Rom spline)
+- `equalizergraph.cpp/h` - Equalizer frequency response graph (band summation, Catmull-Rom spline)
 - `AudioFlow3.qrc` - Qt resource file
 - `AudioFlow3_en_001.ts` - English translation source
 - `src/audioflow.cpp/h` - Audio engine (CoreAudio capture + playback via ring buffer)
+- `src/permission.mm` - macOS permission request bridge (Objective-C++)
+- `src/dockreopen.mm` - macOS dock reopen bridge (Objective-C++)
 - `src/processing.cpp/h` - Processing chain coordinator
+- `src/processing/audioProcessor.cpp/h` - AudioProcessor wrapper (toggle/mix via Smoother)
+- `src/processing/iirFilter.cpp/h` - IIR peak filter (smooth parameter transitions, biquad coefficients)
 - `src/processing/binauralRenderer.cpp/h` - BRIR-based binaural rendering (overlap-save FFT convolution, True Stereo mode)
 - `src/processing/convolutionReverb.cpp/h` - Generic convolution reverb
-- `src/processing/equalizer.cpp/h` - Parametric equalizer
+- `src/processing/equalizer.cpp/h` - Parametric equalizer (manages array of IIRFilter bands)
 - `src/processing/amplifier.cpp/h` - Gain/amplifier stage
 - `src/processing/smoother.cpp/h` - Value smoother (linear interpolation over N steps)
 - `src/fileutils/readIRFile.cpp/h` - WAV file loading via libsndfile (stereo `readIRFile` and 4ch `read4chWavFile`)
@@ -49,6 +56,33 @@ open build/AudioFlow3.app
 - All blocks use separate processing classes coordinated by `processing.cpp`
 - Audio runs on a separate thread with lock-free SPSC ring buffer (65536 samples)
 - Processing runs in two phases per audio callback: `process()` → `processBinaural()`
+
+### AzimuthSelector (`azimuthselector.cpp/h`)
+- Arc-based azimuth angle selector widget (150x150px)
+- Mouse drag, scroll wheel, and programmatic angle setting
+- Animation on release (snap to nearest integer degree)
+- Emits `angleChanged(double)` signal
+- Source positions computed from angle via sine/cosine
+
+### CorrectionGraph (`correctiongraph.cpp/h`)
+- Displays correction IR frequency response (20–20000 Hz)
+- FFT-based magnitude analysis (Accelerate vDSP) with 100 display points on log-frequency scale
+- Catmull-Rom spline smoothing of correction and original curves
+- Dry/wet mixing visualization with dB scale (-24 dB to 0 dB)
+- `setIRData()` takes stereo L/R IR data and sample rate
+
+### EqualizerGraph (`equalizergraph.cpp/h`)
+- Displays parametric equalizer frequency response
+- Band summation with Gaussian influence kernel (Q-factor controls bandwidth)
+- Catmull-Rom spline smoothing of the summed curve
+- Individual control points drawn as yellow dots
+- `setFrequencyData()`, `setGainData()`, `setQData()` for per-band updates
+
+### AudioProcessor (`src/processing/audioProcessor.cpp/h`)
+- Wrapper around `Smoother` for toggle/mix control
+- `setToggle(bool)` sets mix to 0.0 or 1.0
+- `setMix(double)` smoothly interpolates between current and target mix value
+- `process()` delegates to `Smoother` for smooth transitions
 
 ### Binaural Renderer Architecture
 - `BinauralRenderer` owns the overlap-save FFT convolution engine (`convolutionChunkSize=1024`, padded 2048, 1024 bins)
