@@ -2,6 +2,7 @@
 #define AZIMUTHSELECTOR_H
 
 #include <QWidget>
+#include <QLabel>
 #include <QPointF>
 #include <QLineF>
 #include <QPainterPath>
@@ -35,25 +36,32 @@ protected:
     void mouseReleaseEvent(QMouseEvent *event) override;
     void wheelEvent(QWheelEvent *event) override;
 
-private:
+    private:
     void updateSources();
+    void updateLabel();
+    void animateToAngle(double targetAngle, int durationMs);
     double degreesToRadians(double degrees) const;
 
     static constexpr int WIDGET_WIDTH = 150;
     static constexpr int WIDGET_HEIGHT = 150;
+    static constexpr int CLICK_MAX_PX = 16;
+    static constexpr int ANIMATION_DURATION_MS = 250;
+    static constexpr int SNAP_DURATION_MS = 125;
+    static constexpr int DRAG_STEP_PX_BASE = 300;
 
     double m_angle;
     double m_maxAngle;
     bool m_mousePressed = false;
     bool m_dragging = false;
-    QPointF m_pressCenter;
+    QPointF m_pressStart;
     double m_dragStartAngle;
+    double m_endAngle;
     QPropertyAnimation *m_anim = nullptr;
     QLineF m_arcPath;
-    QPainterPath m_triPath;
     QPointF m_srcL;
     QPointF m_srcR;
     int m_triSide;
+    QLabel *m_label = nullptr;
 };
 
 #endif // AZIMUTHSELECTOR_H

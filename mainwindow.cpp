@@ -22,6 +22,7 @@
 #include <QDoubleSpinBox>
 #include <QShowEvent>
 #include <QFileInfo>
+#include "azimuthselector.h"
 #include <QDir>
 #include <QInputDialog>
 #include <QLineEdit>
@@ -963,9 +964,15 @@ void MainWindow::setupBlocks()
     });
 
     QWidget *binauralContent = new QWidget();
-    QVBoxLayout *bnLayout = new QVBoxLayout(binauralContent);
+    QHBoxLayout *bnLayout = new QHBoxLayout(binauralContent);
     bnLayout->setContentsMargins(8, 4, 8, 4);
     bnLayout->setSpacing(4);
+
+    // --- Wrap all current controls in a vertical box ---
+    QWidget *bnControlsWidget = new QWidget();
+    QVBoxLayout *bnControlsLayout = new QVBoxLayout(bnControlsWidget);
+    bnControlsLayout->setContentsMargins(0, 0, 0, 0);
+    bnControlsLayout->setSpacing(4);
 
     auto roomInfos = getRoomInfos();
     std::sort(roomInfos.begin(), roomInfos.end(), [](const RoomInfoData& a, const RoomInfoData& b) {
@@ -992,7 +999,7 @@ void MainWindow::setupBlocks()
         }
     }
     bnRoomLayout->addWidget(bnRoomCombo, 1);
-    bnLayout->addLayout(bnRoomLayout);
+    bnControlsLayout->addLayout(bnRoomLayout);
 
     QWidget *bnInfoWidget = new QWidget();
     bnInfoWidget->setStyleSheet("background: rgba(255,255,255,0.04); border-radius: 4px;");
@@ -1042,7 +1049,7 @@ void MainWindow::setupBlocks()
     bnGrid->addWidget(lblAz, row, 0); bnGrid->addWidget(valAz, row, 1);
     bnGrid->addWidget(lblDim, row, 2); bnGrid->addWidget(valDim, row, 3); row++;
 
-    bnLayout->addWidget(bnInfoWidget);
+    bnControlsLayout->addWidget(bnInfoWidget);
 
     // --- Config row ---
     QHBoxLayout *bnCfgLayout = new QHBoxLayout();
@@ -1056,7 +1063,7 @@ void MainWindow::setupBlocks()
     QCheckBox *bnTrueStereo = new QCheckBox("True Stereo");
     bnCfgLayout->addWidget(bnTrueStereo);
     bnCfgLayout->addStretch();
-    bnLayout->addLayout(bnCfgLayout);
+    bnControlsLayout->addLayout(bnCfgLayout);
 
     auto updateRoomInfo = [bnRoomCombo, bnCfgCombo, roomInfos,
         valLocation, valType, valDim, valListener, valRt60, valAz, valDist]() {
@@ -1111,23 +1118,18 @@ void MainWindow::setupBlocks()
         bnCfgLabel->setEnabled(multipleCfg);
     };
 
-    // --- Position (azimuth) slider — 0 to max azimuth parsed from room's CSV ---
-    QLabel *bnAngleLabel = new QLabel(tr("Azimuth:"));
-    int colLabelW  = bnAngleLabel->fontMetrics().horizontalAdvance("Azimuth:") + 10;
-    int colValW    = bnAngleLabel->fontMetrics().horizontalAdvance("999°") + 2;
-    int colMinW    = bnAngleLabel->fontMetrics().horizontalAdvance("-99°") + 2;
-    int colMaxW    = colMinW;
+    updateConfigOptions();
+    updateRoomInfo();
 
-    QLabel *bnAngleMin = new QLabel("0°");
-    QLabel *bnAngleMax = new QLabel("180°");
-    QLabel *bnAngleValue = new QLabel();
-    QSlider *bnAngleSlider = new QSlider(Qt::Horizontal);
-    bnAngleSlider->setSingleStep(5);
-    bnAngleSlider->setPageStep(5);
-    bnAngleSlider->setTickInterval(5);
-    bnAngleSlider->setTickPosition(QSlider::TicksBelow);
+    // --- AzimuthSelector on the right ---
+    AzimuthSelector *bnAzimuthSelector = new AzimuthSelector(
+        static_cast<double>(std::round(m_config.binauralAngle / 5.0)) * 5.0,
+        180.0);
+    connect(bnAzimuthSelector, &AzimuthSelector::angleChanged, this, [bnAzimuthSelector](double angle) {
+        setBinauralAngle(static_cast<int>(std::round(angle)));
+    });
 
-    auto updateAngleRange = [bnAngleSlider, bnAngleValue, bnAngleMin, bnAngleMax, bnRoomCombo, roomInfos]() {
+    auto updateAngleRange = [bnRoomCombo, roomInfos, bnAzimuthSelector]() {
         int maxAz = 150;
         std::string roomId = bnRoomCombo->currentData().toString().toStdString();
         auto it = std::find_if(roomInfos.begin(), roomInfos.end(),
@@ -1139,17 +1141,13 @@ void MainWindow::setupBlocks()
                 maxAz = std::stoi(m[1].str());
             else if (std::regex_search(az, m, std::regex("[+-]?(\\d+)\\s*°")))
                 maxAz = std::stoi(m[1].str());
+            bnAzimuthSelector->setMaxAngle(static_cast<double>(maxAz));
         }
-        bnAngleSlider->blockSignals(true);
-        bnAngleSlider->setRange(0, maxAz);
-        bnAngleSlider->setValue(std::clamp(bnAngleSlider->value(), 0, maxAz));
-        bnAngleSlider->blockSignals(false);
-        bnAngleValue->setText(QString::number(bnAngleSlider->value()) + "°");
-        bnAngleMax->setText(QString::number(maxAz) + "°");
     };
 
-    updateConfigOptions();
-    updateRoomInfo();
+    bnLayout->addWidget(bnControlsWidget);
+    bnLayout->addWidget(bnAzimuthSelector, 1);
+
     updateAngleRange();
 
     connect(bnCfgCombo, &QComboBox::currentIndexChanged, this, [bnCfgCombo, updateRoomInfo, updateAngleRange]() {
@@ -1159,41 +1157,11 @@ void MainWindow::setupBlocks()
         if (!cfg.isEmpty()) setBinauralConfig(cfg.toStdString());
     });
 
-    bnAngleSlider->setValue(static_cast<int>(std::round(m_config.binauralAngle / 5.0)) * 5);
-    connect(bnAngleSlider, &QSlider::valueChanged, this, [bnAngleSlider, bnAngleValue](int v) {
-        int snapped = static_cast<int>(std::round(v / 5.0)) * 5;
-        if (snapped != v) {
-            QSignalBlocker blocker(bnAngleSlider);
-            bnAngleSlider->setValue(snapped);
-        }
-        bnAngleValue->setText(QString::number(snapped) + "°");
-        setBinauralAngle(snapped);
-    });
-    bnAngleValue->setText(QString::number(bnAngleSlider->value()) + "°");
-
-    QHBoxLayout *bnAngleLayout = new QHBoxLayout();
-    bnAngleLayout->setContentsMargins(0, 0, 0, 0);
-    bnAngleLayout->setSpacing(8);
-    bnAngleLabel->setMinimumWidth(colLabelW);
-    bnAngleLayout->addWidget(bnAngleLabel, 0, Qt::AlignVCenter);
-    bnAngleValue->setMinimumWidth(colValW);
-    bnAngleValue->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
-    bnAngleLayout->addWidget(bnAngleValue, 0, Qt::AlignVCenter);
-    bnAngleLayout->addSpacing(8);
-    bnAngleMin->setMinimumWidth(colMinW);
-    bnAngleMin->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    bnAngleLayout->addWidget(bnAngleMin, 0, Qt::AlignVCenter);
-    bnAngleLayout->addWidget(bnAngleSlider, 1, Qt::AlignVCenter);
-    bnAngleMax->setMinimumWidth(colMaxW);
-    bnAngleMax->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
-    bnAngleLayout->addWidget(bnAngleMax, 0, Qt::AlignVCenter);
-    bnLayout->addLayout(bnAngleLayout);
-
     m_blocks[4]->setContentWidget(binauralContent);
 
     connect(bnRoomCombo, &QComboBox::currentIndexChanged, this,
-        [bnRoomCombo, bnAngleSlider,
-         bnAngleLabel, bnAngleMin, bnAngleMax, bnAngleValue, bnTrueStereo,
+        [bnRoomCombo, bnAzimuthSelector,
+         bnTrueStereo,
          updateRoomInfo, updateConfigOptions, updateAngleRange, bnCfgCombo]() {
         QString room = bnRoomCombo->currentData().toString();
         updateConfigOptions();
@@ -1204,11 +1172,7 @@ void MainWindow::setupBlocks()
         updateAngleRange();
         updateRoomInfo();
         if (bnTrueStereo->isChecked()) {
-            bnAngleSlider->setEnabled(false);
-            bnAngleLabel->setEnabled(false);
-            bnAngleMin->setEnabled(false);
-            bnAngleMax->setEnabled(false);
-            bnAngleValue->setEnabled(false);
+            bnAzimuthSelector->setEnabled(false);
         }
     });
 
@@ -1230,29 +1194,17 @@ void MainWindow::setupBlocks()
 
     bnTrueStereo->setChecked(m_config.binauralTrueStereo);
     if (m_config.binauralTrueStereo) {
-        bnAngleSlider->setEnabled(false);
-        bnAngleLabel->setEnabled(false);
-        bnAngleMin->setEnabled(false);
-        bnAngleMax->setEnabled(false);
-        bnAngleValue->setEnabled(false);
+        bnAzimuthSelector->setEnabled(false);
     }
     connect(bnTrueStereo, &QCheckBox::toggled, this,
-        [bnAngleSlider, bnAngleLabel, bnAngleMin, bnAngleMax, bnAngleValue, updateAngleRange]
+        [bnAzimuthSelector, updateAngleRange]
         (bool checked) {
             setBinauralTrueStereo(checked);
             if (checked) {
-                bnAngleSlider->setEnabled(false);
-                bnAngleLabel->setEnabled(false);
-                bnAngleMin->setEnabled(false);
-                bnAngleMax->setEnabled(false);
-                bnAngleValue->setEnabled(false);
+                bnAzimuthSelector->setEnabled(false);
             } else {
                 updateAngleRange();
-                bnAngleSlider->setEnabled(true);
-                bnAngleLabel->setEnabled(true);
-                bnAngleMin->setEnabled(true);
-                bnAngleMax->setEnabled(true);
-                bnAngleValue->setEnabled(true);
+                bnAzimuthSelector->setEnabled(true);
             }
         }
     );
