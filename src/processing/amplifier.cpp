@@ -49,6 +49,7 @@ void Amplifier::process(std::vector<double> &input) {
         double factor = gainLin * va * currentMix + (1.0 - currentMix);
         std::transform(input.begin(), input.end(), input.begin(),
             [factor](double s) { return s * factor; });
+        incrementIfClipping(m_clipCount, input);
         return;
     }
 
@@ -61,6 +62,7 @@ void Amplifier::process(std::vector<double> &input) {
             double m = mix.currentValue();
             sample = sample * scaledBase * m + sample * (1.0 - m);
         }
+        incrementIfClipping(m_clipCount, input);
         return;
     }
 
@@ -71,6 +73,7 @@ void Amplifier::process(std::vector<double> &input) {
         double scaled = sample * std::exp(LN10_OVER_20 * g) * v;
         sample = scaled * m + sample * (1.0 - m);
     }
+    incrementIfClipping(m_clipCount, input);
 }
 
 float Amplifier::getGain() {
@@ -99,4 +102,8 @@ bool Amplifier::getAutoGain() {
 
 float Amplifier::getAutoGainValue() {
     return static_cast<float>(m_autoGainDb);
+}
+
+int Amplifier::consumeClipCount() {
+    return m_clipCount.exchange(0, std::memory_order_relaxed);
 }

@@ -613,6 +613,31 @@ IRStatusInfo getReverbIRStatus() {
     return {s.hasFile, s.loaded, s.duration};
 }
 
+int getClipCount_Correction() {
+    std::lock_guard<std::mutex> lock(audioProcessorMutex);
+    return audioProcessor->consumeClipCount_Correction();
+}
+
+int getClipCount_Amplifier() {
+    std::lock_guard<std::mutex> lock(audioProcessorMutex);
+    return audioProcessor->consumeClipCount_Amplifier();
+}
+
+int getClipCount_Equalizer() {
+    std::lock_guard<std::mutex> lock(audioProcessorMutex);
+    return audioProcessor->consumeClipCount_Equalizer();
+}
+
+int getClipCount_Reverb() {
+    std::lock_guard<std::mutex> lock(audioProcessorMutex);
+    return audioProcessor->consumeClipCount_Reverb();
+}
+
+int getClipCount_Binaural() {
+    std::lock_guard<std::mutex> lock(audioProcessorMutex);
+    return audioProcessor->consumeClipCount_Binaural();
+}
+
 void setUIExpandedCorrecting(bool expanded) {
     gConfig->uiExpandedCorrecting = expanded;
 }

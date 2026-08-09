@@ -7,6 +7,7 @@
 #include <atomic>
 #include <mutex>
 #include "smoother.h"
+#include "clipDetector.h"
 #include "../fileutils/readIRFile.h"
 #include "../fileutils/globals.h"
 
@@ -38,6 +39,8 @@ public:
     void setTargetDuration(float sec);
 
     static std::vector<std::string> availableRooms();
+
+    int consumeClipCount();
 
     struct RoomInfo {
         std::string id;
@@ -132,6 +135,7 @@ private:
     std::vector<float> m_drainR;
 
     std::mutex m_mutex;
+    std::atomic<int> m_clipCount{0};
 
     static bool loadBRIRFile(const std::string& path, float sampleRate,
                              size_t chunkSize, size_t paddedSize, size_t numBins,

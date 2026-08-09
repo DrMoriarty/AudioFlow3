@@ -586,6 +586,8 @@ void BinauralRenderer::processInterleaved(std::vector<float>& buffer) {
         m_drainR.erase(m_drainR.begin(), m_drainR.begin() + numFrames);
         break;
     }
+
+    incrementIfClipping(m_clipCount, buffer);
 }
 
 static std::vector<std::string> parseCsvLine(const std::string& line) {
@@ -635,4 +637,8 @@ std::vector<BinauralRenderer::RoomInfo> BinauralRenderer::loadRoomInfos() {
         rooms.push_back(std::move(r));
     }
     return rooms;
+}
+
+int BinauralRenderer::consumeClipCount() {
+    return m_clipCount.exchange(0, std::memory_order_relaxed);
 }

@@ -11,6 +11,7 @@
 
 #include "equalizergraph.h"
 #include "correctiongraph.h"
+#include "ledindicator.h"
 #include "src/fileutils/config.h"
 
 QT_BEGIN_NAMESPACE
@@ -21,7 +22,6 @@ QT_END_NAMESPACE
 
 class CollapsibleBlock;
 class QWidget;
-class LedIndicator;
 
 class MainWindow : public QMainWindow
 {
@@ -57,6 +57,7 @@ private:
     QWidget *m_vuR = nullptr;
     LedIndicator *m_correctionLed = nullptr;
     LedIndicator *m_reverbLed = nullptr;
+    LedIndicator *m_clipLed[5] = {};
 
     static const int BAND_COUNT = 10;
     QSpinBox *m_eqHz[BAND_COUNT] = {};

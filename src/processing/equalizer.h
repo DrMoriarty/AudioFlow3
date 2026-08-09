@@ -6,8 +6,10 @@
 #define EQ_CPP_EQUALIZER_H
 
 #include <map>
+#include <atomic>
 #include "iirFilter.h"
 #include "audioProcessor.h"
+#include "clipDetector.h"
 
 class Equalizer: public AudioProcessor {
 public:
@@ -16,7 +18,10 @@ public:
     void process(std::vector<double>& input);
 
     std::vector<IIRFilter>& getFilters();
+
+    int consumeClipCount();
 private:
+    std::atomic<int> m_clipCount{0};
     std::shared_ptr<std::vector<IIRFilter>> filters;
     std::vector<double> processed;
     std::vector<double> left;

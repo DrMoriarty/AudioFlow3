@@ -39,6 +39,12 @@ struct IRStatusInfo {
 IRStatusInfo getCorrectionIRStatus();
 IRStatusInfo getReverbIRStatus();
 
+int getClipCount_Correction();
+int getClipCount_Amplifier();
+int getClipCount_Equalizer();
+int getClipCount_Reverb();
+int getClipCount_Binaural();
+
 void setUIExpandedCorrecting(bool expanded);
 void setUIExpandedPreamplifier(bool expanded);
 void setUIExpandedEqualizer(bool expanded);

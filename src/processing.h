@@ -55,6 +55,12 @@ public:
     };
     IRStatus getCorrectionIRStatus() const;
     IRStatus getReverbIRStatus() const;
+
+    int consumeClipCount_Correction();
+    int consumeClipCount_Amplifier();
+    int consumeClipCount_Equalizer();
+    int consumeClipCount_Reverb();
+    int consumeClipCount_Binaural();
 private:
     double volume;
     float deviceSampleRate;

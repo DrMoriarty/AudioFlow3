@@ -1,5 +1,6 @@
 #include "collapsibleblock.h"
 #include "toggleswitch.h"
+#include "ledindicator.h"
 
 #include <QPushButton>
 #include <QLabel>
@@ -191,4 +192,16 @@ void CollapsibleBlock::updateHeaderColor()
     m_titleLabel->setStyleSheet(QStringLiteral(
         "QLabel { color: rgb(%1, %2, %3); font-weight: bold; }"
     ).arg(tr).arg(tg).arg(tb));
+}
+
+LedIndicator *CollapsibleBlock::addClipLed() {
+    auto *led = new LedIndicator(m_headerWidget);
+    auto *headerLayout = static_cast<QBoxLayout*>(m_headerWidget->layout());
+    if (m_toggleSwitch) {
+        int idx = headerLayout->indexOf(m_toggleSwitch);
+        headerLayout->insertWidget(idx, led, 0, Qt::AlignVCenter);
+    } else {
+        headerLayout->addWidget(led, 0, Qt::AlignVCenter);
+    }
+    return led;
 }

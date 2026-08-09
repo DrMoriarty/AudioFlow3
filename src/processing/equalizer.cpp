@@ -59,8 +59,13 @@ void Equalizer::process(std::vector<double>& input) {
             input[2 * i + 1] = right[i] * dw + input[2 * i + 1] * (1.0 - dw);
         }
     }
+    incrementIfClipping(m_clipCount, input);
 }
 
 std::vector<IIRFilter>& Equalizer::getFilters() {
     return *filters;
+}
+
+int Equalizer::consumeClipCount() {
+    return m_clipCount.exchange(0, std::memory_order_relaxed);
 }

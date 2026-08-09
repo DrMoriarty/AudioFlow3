@@ -25,6 +25,8 @@ qt_add_executable(AudioFlow3
     equalizergraph.h
     correctiongraph.cpp
     correctiongraph.h
+    ledindicator.cpp
+    ledindicator.h
         src/audioflow.cpp
         src/audioflow.h
         src/permission.mm

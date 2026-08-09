@@ -9,6 +9,7 @@
 #include <atomic>
 #include "smoother.h"
 #include "audioProcessor.h"
+#include "clipDetector.h"
 #include "../fileutils/globals.h"
 
 class Amplifier: public AudioProcessor {
@@ -26,11 +27,14 @@ public:
     void setAutoGain(bool enabled);
     bool getAutoGain();
     float getAutoGainValue();
+
+    int consumeClipCount();
 private:
     Smoother gain;
     Smoother volumeAdjustment;
 
     std::atomic<bool> m_autoGain{false};
+    std::atomic<int> m_clipCount{0};
     double m_rmsAccum = 0.0;
     int m_rmsCount = 0;
     double m_autoGainDb = 0.0;

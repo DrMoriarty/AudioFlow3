@@ -4,6 +4,7 @@
 #include "knobwidget.h"
 #include "equalizergraph.h"
 #include "correctiongraph.h"
+#include "ledindicator.h"
 #include "src/fileutils/config.h"
 #include "src/fileutils/readIRFile.h"
 #include "src/audioflow.h"
@@ -64,38 +65,6 @@ private:
     float m_level = 0.0f;
 };
 
-class LedIndicator : public QWidget {
-public:
-    enum State { None, Loaded, Error };
-    explicit LedIndicator(QWidget *parent = nullptr) : QWidget(parent) {
-        setFixedSize(12, 12);
-    }
-    void setState(State s, const QString &tooltip = {}) {
-        if (m_state == s && m_tooltip == tooltip) return;
-        m_state = s;
-        m_tooltip = tooltip;
-        setToolTip(tooltip);
-        update();
-    }
-protected:
-    void paintEvent(QPaintEvent *) override {
-        QPainter p(this);
-        p.setRenderHint(QPainter::Antialiasing);
-        QColor c;
-        switch (m_state) {
-            case Loaded: c = QColor(60, 200, 60); break;
-            case Error:  c = QColor(220, 50, 50); break;
-            default:     c = QColor(80, 80, 80); break;
-        }
-        p.setBrush(c);
-        p.setPen(QColor(40, 40, 40));
-        p.drawEllipse(1, 1, width() - 2, height() - 2);
-    }
-private:
-    State m_state = None;
-    QString m_tooltip;
-};
-
 MainWindow::MainWindow(const Config &config, QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -130,23 +99,41 @@ MainWindow::MainWindow(const Config &config, QWidget *parent)
         {
             auto s = getCorrectionIRStatus();
             if (!s.hasFile)
-                m_correctionLed->setState(LedIndicator::None);
+                m_correctionLed->setState(LedIndicator::Transparent);
             else if (s.loaded)
-                m_correctionLed->setState(LedIndicator::Loaded, tr("Loaded file %1 s").arg(s.duration, 0, 'f', 2));
+                m_correctionLed->setState(LedIndicator::Green, tr("Loaded file %1 s").arg(s.duration, 0, 'f', 2));
             else
-                m_correctionLed->setState(LedIndicator::Error, tr("Error"));
+                m_correctionLed->setState(LedIndicator::Red, tr("Error"));
         }
         {
             auto s = getReverbIRStatus();
             if (!s.hasFile)
-                m_reverbLed->setState(LedIndicator::None);
+                m_reverbLed->setState(LedIndicator::Transparent);
             else if (s.loaded)
-                m_reverbLed->setState(LedIndicator::Loaded, tr("Loaded file %1 s").arg(s.duration, 0, 'f', 2));
+                m_reverbLed->setState(LedIndicator::Green, tr("Loaded file %1 s").arg(s.duration, 0, 'f', 2));
             else
-                m_reverbLed->setState(LedIndicator::Error, tr("Error"));
+                m_reverbLed->setState(LedIndicator::Red, tr("Error"));
         }
     });
     statusTimer->start(1000);
+
+    auto *clipTimer = new QTimer(this);
+    connect(clipTimer, &QTimer::timeout, this, [this]() {
+        auto updateLed = [](LedIndicator *led, int count) {
+            if (count == 0)
+                led->setState(LedIndicator::Transparent);
+            else if (count <= 3)
+                led->setState(LedIndicator::Yellow, tr("Clipping detected"));
+            else
+                led->setState(LedIndicator::Red, tr("Clipping detected"));
+        };
+        updateLed(m_clipLed[0], getClipCount_Correction());
+        updateLed(m_clipLed[1], getClipCount_Amplifier());
+        updateLed(m_clipLed[2], getClipCount_Equalizer());
+        updateLed(m_clipLed[3], getClipCount_Reverb());
+        updateLed(m_clipLed[4], getClipCount_Binaural());
+    });
+    clipTimer->start(500);
 
     m_latencyLabel->setText(QString("Latency: %1 ms").arg(getLatencyMs(), 0, 'f', 1));
     m_processLabel->setText(QString("Process: %1 ms").arg(getProcessTimeMs(), 0, 'f', 2));
@@ -361,6 +348,8 @@ void MainWindow::setupBlocks()
         if (i < 5)
             block->addToggleSwitch();
     }
+    for (int i = 0; i < 5; ++i)
+        m_clipLed[i] = m_blocks[i]->addClipLed();
     m_blocks[0]->setToggleChecked(m_config.correctionToggle);
     m_blocks[1]->setToggleChecked(m_config.ampToggle);
     m_blocks[2]->setToggleChecked(m_config.equalizerToggle);

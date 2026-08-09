@@ -8,6 +8,7 @@ class QLabel;
 class QVBoxLayout;
 class QWidget;
 class ToggleSwitch;
+class LedIndicator;
 
 class CollapsibleBlock : public QFrame
 {
@@ -24,6 +25,7 @@ public:
     int headerHeight() const;
     void addToggleSwitch();
     void setToggleChecked(bool checked);
+    LedIndicator *addClipLed();
 
 signals:
     void expandedChanged();

@@ -221,6 +221,8 @@ void ConvolutionReverb::process(std::vector<float>& input) {
         }
         drainL.erase(drainL.begin(), drainL.begin() + numFrames);
         drainR.erase(drainR.begin(), drainR.begin() + numFrames);
+
+        incrementIfClipping(m_clipCount, input);
     }
 }
 
@@ -242,4 +244,8 @@ float ConvolutionReverb::getPostGain() {
 
 float ConvolutionReverb::getDeviceSampleRate() const {
     return deviceSampleRate;
+}
+
+int ConvolutionReverb::consumeClipCount() {
+    return m_clipCount.exchange(0, std::memory_order_relaxed);
 }

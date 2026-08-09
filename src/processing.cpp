@@ -239,3 +239,28 @@ void Processing::setBinauralTargetDuration(float sec) {
 void Processing::processBinaural(std::vector<float>& buffer) {
     binauralRenderer->processInterleaved(buffer);
 }
+
+int Processing::consumeClipCount_Correction() {
+    std::lock_guard<std::mutex> lock(swapMutex);
+    return correctionConvolver->consumeClipCount();
+}
+
+int Processing::consumeClipCount_Amplifier() {
+    std::lock_guard<std::mutex> lock(swapMutex);
+    return amplifier->consumeClipCount();
+}
+
+int Processing::consumeClipCount_Equalizer() {
+    std::lock_guard<std::mutex> lock(swapMutex);
+    return equalizer->consumeClipCount();
+}
+
+int Processing::consumeClipCount_Reverb() {
+    std::lock_guard<std::mutex> lock(swapMutex);
+    return convolutionReverb->consumeClipCount();
+}
+
+int Processing::consumeClipCount_Binaural() {
+    std::lock_guard<std::mutex> lock(swapMutex);
+    return binauralRenderer->consumeClipCount();
+}

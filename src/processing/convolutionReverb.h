@@ -9,9 +9,11 @@
 
 #include <vector>
 #include <string>
+#include <atomic>
 #include <Accelerate/Accelerate.h>
 #include "smoother.h"
 #include "audioProcessor.h"
+#include "clipDetector.h"
 #include "../fileutils/readIRFile.h"
 #include "../fileutils/globals.h"
 
@@ -32,6 +34,8 @@ public:
     float getIRDurationSec() const { return irDurationSec; }
 
     void process(std::vector<float>& input);
+
+    int consumeClipCount();
 private:
     size_t chunkSize;
     size_t paddedSize;
@@ -66,6 +70,7 @@ private:
 
     size_t numChunks;
     float irDurationSec;
+    std::atomic<int> m_clipCount{0};
 
     SplitComplex ifftTmp;
 
