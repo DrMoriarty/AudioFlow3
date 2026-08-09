@@ -14,7 +14,8 @@ class KnobWidget : public QWidget
 
 public:
     explicit KnobWidget(double min, double max, double step, const QString &suffix = QString(), QWidget *parent = nullptr);
-explicit KnobWidget(double min, double max, double step, double initialValue, const QString &suffix = QString(), QWidget *parent = nullptr);
+    explicit KnobWidget(double min, double max, double step, double initialValue, const QString &suffix = QString(), QWidget *parent = nullptr);
+    explicit KnobWidget(double min, double max, double step, double initialValue, const QString &suffix, bool showLabel, QWidget *parent = nullptr);
 
     double currentNumericValue() const;
     int currentIndex() const;
@@ -35,6 +36,7 @@ protected:
     void wheelEvent(QWheelEvent *event) override;
 
 private:
+    void init(double initialValue);
     void updateLabel();
     double indexToAngle(int index) const;
     int angleToNearestIndex(double angle) const;
@@ -45,7 +47,8 @@ private:
     double m_step;
     QString m_suffix;
     int m_index;
-    QLabel *m_label;
+    bool m_showLabel;
+    QLabel *m_label = nullptr;
 
     static constexpr int CLICK_MAX_PX = 16;
     static constexpr int ANIMATION_DURATION_MS = 250;

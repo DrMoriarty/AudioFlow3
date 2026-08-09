@@ -6,8 +6,8 @@
 #define EQ_CPP_PROCESSING_H
 
 #include <map>
+#include <atomic>
 #include "./processing/audioProcessor.h"
-#include "./processing/amplifier.h"
 #include "./processing/equalizer.h"
 #include "./processing/convolutionReverb.h"
 #include "./processing/binauralRenderer.h"
@@ -32,10 +32,6 @@ public:
     void setCorrectionPostGain(float postGainDb);
 
     void setEqualizerToggle(bool toggle);
-    void setAmplifierToggle(bool toggle);
-    void setAmplifierGain(float gain);
-    void setAmplifierAuto(bool enabled);
-    float getAmplifierAutoGainValue();
     void setEqualizerBand(int index, float f, float q, float g);
 
     void setBinauralToggle(bool toggle);
@@ -48,6 +44,11 @@ public:
     void setBinauralTargetDuration(float sec);
     void processBinaural(std::vector<float>& buffer);
 
+    void setCorrectionPreGain(float db);
+    void setEqualizerPreGain(float db);
+    void setReverbPreGain(float db);
+    void setBinauralPreGain(float db);
+
     struct IRStatus {
         bool hasFile;
         bool loaded;
@@ -57,7 +58,6 @@ public:
     IRStatus getReverbIRStatus() const;
 
     int consumeClipCount_Correction();
-    int consumeClipCount_Amplifier();
     int consumeClipCount_Equalizer();
     int consumeClipCount_Reverb();
     int consumeClipCount_Binaural();
@@ -65,12 +65,16 @@ private:
     double volume;
     float deviceSampleRate;
     Config config;
-    std::shared_ptr<Amplifier> amplifier;
     std::shared_ptr<Equalizer> equalizer;
     std::shared_ptr<ConvolutionReverb> correctionConvolver;
     std::shared_ptr<ConvolutionReverb> convolutionReverb;
     std::shared_ptr<BinauralRenderer> binauralRenderer;
     std::mutex swapMutex;
+
+    std::atomic<float> m_correctionPreGain{0.0f};
+    std::atomic<float> m_equalizerPreGain{0.0f};
+    std::atomic<float> m_reverbPreGain{0.0f};
+    std::atomic<float> m_binauralPreGain{0.0f};
 };
 
 

@@ -1,6 +1,7 @@
 #include "collapsibleblock.h"
 #include "toggleswitch.h"
 #include "ledindicator.h"
+#include "knobwidget.h"
 
 #include <QPushButton>
 #include <QLabel>
@@ -204,4 +205,13 @@ LedIndicator *CollapsibleBlock::addClipLed() {
         headerLayout->addWidget(led, 0, Qt::AlignVCenter);
     }
     return led;
+}
+
+KnobWidget *CollapsibleBlock::addPreAmpKnob(double min, double max, double step, double value, const QString &suffix) {
+    auto *knob = new KnobWidget(min, max, step, value, suffix, false, m_headerWidget);
+    knob->setFixedSize(22, 22);
+    auto *headerLayout = static_cast<QBoxLayout*>(m_headerWidget->layout());
+    int idx = headerLayout->indexOf(m_toggleButton);
+    headerLayout->insertWidget(idx + 1, knob, 0, Qt::AlignVCenter);
+    return knob;
 }

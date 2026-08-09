@@ -19,10 +19,6 @@ void setCorrectionIRFile(const std::string& path);
 void setCorrectionDryWet(double dryWet);
 void setCorrectionPostGain(float postGain);
 void setEqualizerToggle(bool toggle);
-void setAmplifierToggle(bool toggle);
-void setAmplifierGain(float gain);
-void setAmplifierAuto(bool enabled);
-float getAmplifierAutoGainValue();
 void setEqualizerBand(int index, float f, float q, float g);
 void setEqualizerPreset(const std::string& name);
 void setBufferSize(int newBufSize);
@@ -40,10 +36,14 @@ IRStatusInfo getCorrectionIRStatus();
 IRStatusInfo getReverbIRStatus();
 
 int getClipCount_Correction();
-int getClipCount_Amplifier();
 int getClipCount_Equalizer();
 int getClipCount_Reverb();
 int getClipCount_Binaural();
+
+void setCorrectionPreGain(float db);
+void setEqualizerPreGain(float db);
+void setReverbPreGain(float db);
+void setBinauralPreGain(float db);
 
 void setUIExpandedCorrecting(bool expanded);
 void setUIExpandedPreamplifier(bool expanded);

@@ -128,10 +128,9 @@ MainWindow::MainWindow(const Config &config, QWidget *parent)
                 led->setState(LedIndicator::Red, tr("Clipping detected"));
         };
         updateLed(m_clipLed[0], getClipCount_Correction());
-        updateLed(m_clipLed[1], getClipCount_Amplifier());
-        updateLed(m_clipLed[2], getClipCount_Equalizer());
-        updateLed(m_clipLed[3], getClipCount_Reverb());
-        updateLed(m_clipLed[4], getClipCount_Binaural());
+        updateLed(m_clipLed[1], getClipCount_Equalizer());
+        updateLed(m_clipLed[2], getClipCount_Reverb());
+        updateLed(m_clipLed[3], getClipCount_Binaural());
     });
     clipTimer->start(500);
 
@@ -153,7 +152,7 @@ void MainWindow::showEvent(QShowEvent *event)
         QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
 
         for (int i = 0; i < m_blocks.size(); ++i) {
-            if (i == 2 && m_eqContentHeight > 0)
+            if (i == 1 && m_eqContentHeight > 0)
                 m_expandedHeights[i] = m_blocks[i]->headerHeight() + m_eqContentHeight;
             else
                 m_expandedHeights[i] = m_blocks[i]->headerHeight() + m_blocks[i]->contentWidget()->sizeHint().height();
@@ -170,8 +169,8 @@ void MainWindow::updateFixedHeight()
     for (int i = 0; i < m_blocks.size(); ++i) {
         CollapsibleBlock *block = m_blocks[i];
         int blockH;
-        if (block == m_blocks[2] && block->isExpanded() && m_eqContentHeight > 0)
-            blockH = m_blocks[2]->headerHeight() + m_eqContentHeight;
+        if (block == m_blocks[1] && block->isExpanded() && m_eqContentHeight > 0)
+            blockH = m_blocks[1]->headerHeight() + m_eqContentHeight;
         else if (block->isExpanded() && m_expandedHeights[i] > 0)
             blockH = m_expandedHeights[i];
         else if (block->isExpanded())
@@ -308,7 +307,6 @@ void MainWindow::setupBlocks()
 
     QStringList blockTitles = {
         tr("Correcting"),
-        tr("Preamplifier"),
         tr("Equalizer"),
         tr("Convolver"),
         tr("Binaural Simulation"),
@@ -335,26 +333,34 @@ void MainWindow::setupBlocks()
             if (index >= 0) {
                 switch (index) {
                     case 0: setUIExpandedCorrecting(isExpanded); break;
-                    case 1: setUIExpandedPreamplifier(isExpanded); break;
-                    case 2: setUIExpandedEqualizer(isExpanded); break;
-                    case 3: setUIExpandedReverb(isExpanded); break;
-                    case 4: setUIExpandedBinaural(isExpanded); break;
-                    case 5: setUIExpandedSettings(isExpanded); break;
+                    case 1: setUIExpandedEqualizer(isExpanded); break;
+                    case 2: setUIExpandedReverb(isExpanded); break;
+                    case 3: setUIExpandedBinaural(isExpanded); break;
+                    case 4: setUIExpandedSettings(isExpanded); break;
                 }
             }
         });
         mainLayout->addWidget(block);
         m_blocks.append(block);
-        if (i < 5)
+        if (i < 4)
             block->addToggleSwitch();
     }
-    for (int i = 0; i < 5; ++i)
+    for (int i = 0; i < 4; ++i)
         m_clipLed[i] = m_blocks[i]->addClipLed();
     m_blocks[0]->setToggleChecked(m_config.correctionToggle);
-    m_blocks[1]->setToggleChecked(m_config.ampToggle);
-    m_blocks[2]->setToggleChecked(m_config.equalizerToggle);
-    m_blocks[3]->setToggleChecked(m_config.reverbToggle);
-    m_blocks[4]->setToggleChecked(m_config.binauralToggle);
+    m_blocks[1]->setToggleChecked(m_config.equalizerToggle);
+    m_blocks[2]->setToggleChecked(m_config.reverbToggle);
+    m_blocks[3]->setToggleChecked(m_config.binauralToggle);
+
+    auto *knobCorr = m_blocks[0]->addPreAmpKnob(-12, 12, 3, m_config.correctionPreGain, "dB");
+    connect(knobCorr, &KnobWidget::valueChanged, this, [](double v) { setCorrectionPreGain(static_cast<float>(v)); });
+    auto *knobEq = m_blocks[1]->addPreAmpKnob(-12, 12, 3, m_config.equalizerPreGain, "dB");
+    connect(knobEq, &KnobWidget::valueChanged, this, [](double v) { setEqualizerPreGain(static_cast<float>(v)); });
+    auto *knobRev = m_blocks[2]->addPreAmpKnob(-12, 12, 3, m_config.reverbPreGain, "dB");
+    connect(knobRev, &KnobWidget::valueChanged, this, [](double v) { setReverbPreGain(static_cast<float>(v)); });
+    auto *knobBn = m_blocks[3]->addPreAmpKnob(-12, 12, 3, m_config.binauralPreGain, "dB");
+    connect(knobBn, &KnobWidget::valueChanged, this, [](double v) { setBinauralPreGain(static_cast<float>(v)); });
+
     m_blockCollapsedHeight = m_blocks[0]->headerHeight();
     m_expandedHeights.resize(m_blocks.size(), -1);
 
@@ -411,6 +417,7 @@ void MainWindow::setupBlocks()
     mixLabel->setAlignment(Qt::AlignCenter);
     mixKnobColumn->addWidget(mixLabel);
     KnobWidget *mixKnob = new KnobWidget(0.0, 100.0, 1.0, m_config.correctionDryWet * 100.0, "%");
+    mixKnob->setFixedSize(60, 60);
     mixKnobColumn->addWidget(mixKnob);
     irLayout->addLayout(mixKnobColumn);
 
@@ -422,6 +429,7 @@ void MainWindow::setupBlocks()
     gainLabel->setAlignment(Qt::AlignCenter);
     knobColumn->addWidget(gainLabel);
     KnobWidget *gainKnob = new KnobWidget(0.0, 9.0, 1.0, m_config.correctionPostGain, "dB");
+    gainKnob->setFixedSize(60, 60);
     knobColumn->addWidget(gainKnob);
     irLayout->addLayout(knobColumn);
     ccLayout->addLayout(irLayout);
@@ -456,86 +464,6 @@ void MainWindow::setupBlocks()
     connect(gainKnob, &KnobWidget::valueChanged, this, [](double value) {
         setCorrectionPostGain(value);
     });
-
-    QWidget *preampContent = new QWidget();
-    QVBoxLayout *paLayout = new QVBoxLayout(preampContent);
-    paLayout->setContentsMargins(8, 4, 8, 4);
-    paLayout->setSpacing(4);
-
-    QHBoxLayout *gainRowLayout = new QHBoxLayout();
-    gainRowLayout->setContentsMargins(0, 0, 0, 0);
-    gainRowLayout->setSpacing(8);
-    QLabel *paGainLabel = new QLabel(tr("Gain"));
-    gainRowLayout->addWidget(paGainLabel);
-    QLabel *gainValueLabel = new QLabel("+0 dB");
-    gainRowLayout->addWidget(gainValueLabel);
-    gainRowLayout->addStretch();
-    QCheckBox *autoSwitch = new QCheckBox(tr("Auto"));
-    gainRowLayout->addWidget(autoSwitch);
-    paLayout->addLayout(gainRowLayout);
-
-    QSlider *gainSlider = new QSlider(Qt::Horizontal);
-    gainSlider->setRange(-12, 12);
-    gainSlider->setValue(static_cast<int>(m_config.ampGain));
-    connect(gainSlider, &QSlider::valueChanged, this, [gainValueLabel](int v) {
-        gainValueLabel->setText(QString("%1%2 dB").arg(v >= 0 ? "+" : "").arg(v));
-    });
-    connect(gainSlider, &QSlider::valueChanged, this, [gainSlider]() {
-        updateSliderColor(gainSlider);
-    });
-    updateSliderColor(gainSlider);
-    gainValueLabel->setText(QString("%1%2 dB").arg(gainSlider->value() >= 0 ? "+" : "").arg(gainSlider->value()));
-    paLayout->addWidget(gainSlider);
-
-    QHBoxLayout *sliderLabelLayout = new QHBoxLayout();
-    sliderLabelLayout->setContentsMargins(0, 0, 0, 0);
-    QLabel *minLabel = new QLabel(tr("-12 dB"));
-    sliderLabelLayout->addWidget(minLabel);
-    sliderLabelLayout->addStretch();
-    QLabel *zeroLabel = new QLabel(tr("0 dB"));
-    sliderLabelLayout->addWidget(zeroLabel);
-    sliderLabelLayout->addStretch();
-    QLabel *maxLabel = new QLabel(tr("+12 dB"));
-    sliderLabelLayout->addWidget(maxLabel);
-    paLayout->addLayout(sliderLabelLayout);
-
-    m_blocks[1]->setContentWidget(preampContent);
-
-    connect(m_blocks[1], &CollapsibleBlock::toggled, this, [](bool checked) {
-        setAmplifierToggle(checked);
-    });
-    connect(gainSlider, &QSlider::valueChanged, this, [](int v) {
-        setAmplifierGain(static_cast<float>(v));
-    });
-
-    connect(autoSwitch, &QCheckBox::toggled, this, [this, gainSlider, gainValueLabel, autoSwitch](bool checked) {
-        setAmplifierAuto(checked);
-        gainSlider->setDisabled(checked);
-        if (checked) {
-            m_ampAutoTimer = new QTimer(this);
-            connect(m_ampAutoTimer, &QTimer::timeout, this, [gainSlider, gainValueLabel, this]() {
-                float v = getAmplifierAutoGainValue();
-                int iv = qBound(-30, static_cast<int>(v + 0.5f), 30);
-                if (gainSlider->value() != iv) {
-                    gainSlider->blockSignals(true);
-                    gainSlider->setValue(iv);
-                    gainSlider->blockSignals(false);
-                    gainValueLabel->setText(QString("%1%2 dB").arg(iv >= 0 ? "+" : "").arg(iv));
-                    updateSliderColor(gainSlider);
-                }
-            });
-            m_ampAutoTimer->start(200);
-        } else {
-            if (m_ampAutoTimer) {
-                m_ampAutoTimer->stop();
-                m_ampAutoTimer->deleteLater();
-                m_ampAutoTimer = nullptr;
-            }
-        }
-    });
-    if (m_config.ampAuto) {
-        autoSwitch->setChecked(true);
-    }
 
     QWidget *equalizerContent = new QWidget();
     m_eqContent = equalizerContent;
@@ -784,9 +712,9 @@ void MainWindow::setupBlocks()
     equalizerContent->setMinimumHeight(eqContentH);
     m_eqContentHeight = eqContentH;
 
-    m_blocks[2]->setContentWidget(equalizerContent);
+    m_blocks[1]->setContentWidget(equalizerContent);
 
-    connect(m_blocks[2], &CollapsibleBlock::toggled, this, [](bool checked) {
+    connect(m_blocks[1], &CollapsibleBlock::toggled, this, [](bool checked) {
         setEqualizerToggle(checked);
     });
 
@@ -933,6 +861,7 @@ void MainWindow::setupBlocks()
     cvMixLabel->setAlignment(Qt::AlignCenter);
     rightColumn->addWidget(cvMixLabel);
     KnobWidget *cvMixKnob = new KnobWidget(0.0, 100.0, 1.0, m_config.reverbDryWet * 100.0, "%");
+    cvMixKnob->setFixedSize(60, 60);
     rightColumn->addWidget(cvMixKnob);
     cvLayout->addLayout(rightColumn);
 
@@ -940,12 +869,12 @@ void MainWindow::setupBlocks()
         setReverbDryWet(value / 100.0);
     });
 
-    m_blocks[3]->setContentWidget(convolverContent);
+    m_blocks[2]->setContentWidget(convolverContent);
 
-    connect(m_blocks[3], &CollapsibleBlock::toggled, this, [this](bool checked) {
+    connect(m_blocks[2], &CollapsibleBlock::toggled, this, [this](bool checked) {
         if (!m_toggleGuard && checked) {
             m_toggleGuard = true;
-            m_blocks[4]->setToggleChecked(false);
+            m_blocks[3]->setToggleChecked(false);
             setBinauralToggle(false);
             m_toggleGuard = false;
         }
@@ -1159,7 +1088,7 @@ void MainWindow::setupBlocks()
         if (!cfg.isEmpty()) setBinauralConfig(cfg.toStdString());
     });
 
-    m_blocks[4]->setContentWidget(binauralContent);
+    m_blocks[3]->setContentWidget(binauralContent);
 
     connect(bnRoomCombo, &QComboBox::currentIndexChanged, this,
         [bnRoomCombo, bnAzimuthSelector,
@@ -1221,10 +1150,10 @@ void MainWindow::setupBlocks()
         }
     );
 
-    connect(m_blocks[4], &CollapsibleBlock::toggled, this, [this](bool checked) {
+    connect(m_blocks[3], &CollapsibleBlock::toggled, this, [this](bool checked) {
         if (!m_toggleGuard && checked) {
             m_toggleGuard = true;
-            m_blocks[3]->setToggleChecked(false);
+            m_blocks[2]->setToggleChecked(false);
             setReverbToggle(false);
             m_toggleGuard = false;
         }
@@ -1277,13 +1206,12 @@ void MainWindow::setupBlocks()
     });
     stLayout->addWidget(bufSizeCombo, 1, 2, 1, 2);
 
-    m_blocks[5]->setContentWidget(settingsContent);
+    m_blocks[4]->setContentWidget(settingsContent);
 
     setCentralWidget(centralWidget);
     m_blocks[0]->setExpanded(m_config.uiExpandedCorrecting);
-    m_blocks[1]->setExpanded(m_config.uiExpandedPreamplifier);
-    m_blocks[2]->setExpanded(m_config.uiExpandedEqualizer);
-    m_blocks[3]->setExpanded(m_config.uiExpandedReverb);
-    m_blocks[4]->setExpanded(m_config.uiExpandedBinaural);
-    m_blocks[5]->setExpanded(m_config.uiExpandedSettings);
+    m_blocks[1]->setExpanded(m_config.uiExpandedEqualizer);
+    m_blocks[2]->setExpanded(m_config.uiExpandedReverb);
+    m_blocks[3]->setExpanded(m_config.uiExpandedBinaural);
+    m_blocks[4]->setExpanded(m_config.uiExpandedSettings);
 }

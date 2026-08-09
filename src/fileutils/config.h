@@ -22,6 +22,11 @@ public:
     bool ampAuto;
     float ampGain;
 
+    float correctionPreGain;
+    float equalizerPreGain;
+    float reverbPreGain;
+    float binauralPreGain;
+
     bool equalizerToggle;
     std::vector<float> equalizerF;
     std::vector<float> equalizerQ;

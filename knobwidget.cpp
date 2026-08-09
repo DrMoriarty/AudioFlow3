@@ -12,18 +12,30 @@
 #include <cmath>
 
 KnobWidget::KnobWidget(double min, double max, double step, const QString &suffix, QWidget *parent)
-    : KnobWidget(min, max, step, 0.0, suffix, parent)
+    : KnobWidget(min, max, step, 0.0, suffix, true, parent)
 {
 }
 
 KnobWidget::KnobWidget(double min, double max, double step, double initialValue, const QString &suffix, QWidget *parent)
+    : KnobWidget(min, max, step, initialValue, suffix, true, parent)
+{
+}
+
+KnobWidget::KnobWidget(double min, double max, double step, double initialValue, const QString &suffix, bool showLabel, QWidget *parent)
     : QWidget(parent)
     , m_min(min)
     , m_max(max)
     , m_step(step)
     , m_suffix(suffix)
     , m_index(static_cast<int>((initialValue - min) / step))
+    , m_showLabel(showLabel)
 {
+    init(initialValue);
+}
+
+void KnobWidget::init(double initialValue)
+{
+    Q_UNUSED(initialValue);
     if (m_index < 0) m_index = 0;
     if (m_index > static_cast<int>((m_max - m_min) / m_step)) m_index = static_cast<int>((m_max - m_min) / m_step);
 
@@ -32,11 +44,11 @@ KnobWidget::KnobWidget(double min, double max, double step, double initialValue,
     layout->setSpacing(2);
     layout->setAlignment(Qt::AlignBottom | Qt::AlignHCenter);
 
-    setFixedSize(60, 60);
-
-    m_label = new QLabel(this);
-    m_label->setAlignment(Qt::AlignCenter);
-    layout->addWidget(m_label);
+    if (m_showLabel) {
+        m_label = new QLabel(this);
+        m_label->setAlignment(Qt::AlignCenter);
+        layout->addWidget(m_label);
+    }
 
     m_anim = new QPropertyAnimation(this, "currentAngle", this);
     m_anim->setEasingCurve(QEasingCurve::OutQuad);
@@ -107,9 +119,10 @@ void KnobWidget::paintEvent(QPaintEvent *event)
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing);
 
-    int knobSize = 36;
+    int avail = m_showLabel ? height() - 20 : height();
+    int knobSize = qMax(6, qMin(width(), avail) - 4);
     int knobX = (width() - knobSize) / 2;
-    int knobY = 4;
+    int knobY = 2;
     int radius = knobSize / 2;
     int cx = knobX + radius;
     int cy = knobY + radius;
@@ -120,7 +133,7 @@ void KnobWidget::paintEvent(QPaintEvent *event)
 
     if ((m_max - m_min) / m_step > 1) {
         double rad = qDegreesToRadians(m_currentAngle);
-        int lineLen = radius - 4;
+        int lineLen = radius - qMax(1, radius / 5);
         int ex = cx + static_cast<int>(lineLen * qCos(rad));
         int ey = cy - static_cast<int>(lineLen * qSin(rad));
         p.setPen(QPen(QColor("#ffffff"), 2));
@@ -230,7 +243,10 @@ void KnobWidget::updateLabel()
     } else {
         numStr = QString::number(value, 'f', 0) + " " + m_suffix;
     }
-    m_label->setText(numStr);
+    if (m_label)
+        m_label->setText(numStr);
+    else
+        setToolTip(numStr);
 }
 
 void KnobWidget::mouseDoubleClickEvent(QMouseEvent *event)

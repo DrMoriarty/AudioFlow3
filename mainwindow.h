@@ -50,14 +50,13 @@ private:
     QVector<int> m_expandedHeights;
     bool m_initialized = false;
     int m_titleBarHeight = -1;
-    QTimer *m_ampAutoTimer = nullptr;
     QLabel *m_latencyLabel = nullptr;
     QLabel *m_processLabel = nullptr;
     QWidget *m_vuL = nullptr;
     QWidget *m_vuR = nullptr;
     LedIndicator *m_correctionLed = nullptr;
     LedIndicator *m_reverbLed = nullptr;
-    LedIndicator *m_clipLed[5] = {};
+    LedIndicator *m_clipLed[4] = {};
 
     static const int BAND_COUNT = 10;
     QSpinBox *m_eqHz[BAND_COUNT] = {};

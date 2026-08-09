@@ -9,6 +9,7 @@ class QVBoxLayout;
 class QWidget;
 class ToggleSwitch;
 class LedIndicator;
+class KnobWidget;
 
 class CollapsibleBlock : public QFrame
 {
@@ -26,6 +27,7 @@ public:
     void addToggleSwitch();
     void setToggleChecked(bool checked);
     LedIndicator *addClipLed();
+    KnobWidget *addPreAmpKnob(double min, double max, double step, double value, const QString &suffix);
 
 signals:
     void expandedChanged();

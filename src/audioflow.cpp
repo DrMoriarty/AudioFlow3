@@ -518,34 +518,6 @@ void setEqualizerToggle(bool toggle) {
     gConfig->equalizerToggle = toggle;
 }
 
-void setAmplifierToggle(bool toggle) {
-    audioProcessorMutex.lock();
-    audioProcessor->setAmplifierToggle(toggle);
-    audioProcessorMutex.unlock();
-    gConfig->ampToggle = toggle;
-}
-
-void setAmplifierGain(float gain) {
-    audioProcessorMutex.lock();
-    audioProcessor->setAmplifierGain(gain);
-    audioProcessorMutex.unlock();
-    gConfig->ampGain = gain;
-}
-
-void setAmplifierAuto(bool enabled) {
-    audioProcessorMutex.lock();
-    audioProcessor->setAmplifierAuto(enabled);
-    audioProcessorMutex.unlock();
-    gConfig->ampAuto = enabled;
-}
-
-float getAmplifierAutoGainValue() {
-    std::lock_guard<std::mutex> lock(audioProcessorMutex);
-    float v = audioProcessor->getAmplifierAutoGainValue();
-    gConfig->ampGain = v;
-    return v;
-}
-
 void setEqualizerBand(int index, float f, float q, float g) {
     audioProcessorMutex.lock();
     audioProcessor->setEqualizerBand(index, f, q, g);
@@ -618,11 +590,6 @@ int getClipCount_Correction() {
     return audioProcessor->consumeClipCount_Correction();
 }
 
-int getClipCount_Amplifier() {
-    std::lock_guard<std::mutex> lock(audioProcessorMutex);
-    return audioProcessor->consumeClipCount_Amplifier();
-}
-
 int getClipCount_Equalizer() {
     std::lock_guard<std::mutex> lock(audioProcessorMutex);
     return audioProcessor->consumeClipCount_Equalizer();
@@ -636,6 +603,34 @@ int getClipCount_Reverb() {
 int getClipCount_Binaural() {
     std::lock_guard<std::mutex> lock(audioProcessorMutex);
     return audioProcessor->consumeClipCount_Binaural();
+}
+
+void setCorrectionPreGain(float db) {
+    audioProcessorMutex.lock();
+    audioProcessor->setCorrectionPreGain(db);
+    audioProcessorMutex.unlock();
+    gConfig->correctionPreGain = db;
+}
+
+void setEqualizerPreGain(float db) {
+    audioProcessorMutex.lock();
+    audioProcessor->setEqualizerPreGain(db);
+    audioProcessorMutex.unlock();
+    gConfig->equalizerPreGain = db;
+}
+
+void setReverbPreGain(float db) {
+    audioProcessorMutex.lock();
+    audioProcessor->setReverbPreGain(db);
+    audioProcessorMutex.unlock();
+    gConfig->reverbPreGain = db;
+}
+
+void setBinauralPreGain(float db) {
+    audioProcessorMutex.lock();
+    audioProcessor->setBinauralPreGain(db);
+    audioProcessorMutex.unlock();
+    gConfig->binauralPreGain = db;
 }
 
 void setUIExpandedCorrecting(bool expanded) {

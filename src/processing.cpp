@@ -6,42 +6,39 @@
 #include "./fileutils/globals.h"
 #include <thread>
 #include <mutex>
+#include <cmath>
 #include "iostream"
 
 
 Processing::Processing(const Config& config, double volume, float deviceSampleRate) :
     config(config),
     deviceSampleRate(deviceSampleRate),
-    amplifier([&]() {
-        auto amp = std::make_shared<Amplifier>(config.ampToggle, config.ampGain);
-        amp->setAutoGain(config.ampAuto);
-        return amp;
-    }()),
     equalizer(std::make_shared<Equalizer>(config.equalizerToggle, config.equalizerF, config.equalizerQ, config.equalizerG, deviceSampleRate)),
     correctionConvolver(std::make_shared<ConvolutionReverb>(config.correctionToggle, config.correctionIRFilePath, config.correctionDryWet, deviceSampleRate, config.correctionPostGain)),
     convolutionReverb(std::make_shared<ConvolutionReverb>(config.reverbToggle, config.irFilePath, config.reverbDryWet, deviceSampleRate)),
     binauralRenderer(std::make_shared<BinauralRenderer>(config.binauralToggle, config.binauralRoom, config.binauralConfig, config.binauralAngle, deviceSampleRate, config.binauralTrueStereo)),
-    volume(volume) {}
+    volume(volume)
+{
+    m_correctionPreGain.store(config.correctionPreGain, std::memory_order_relaxed);
+    m_equalizerPreGain.store(config.equalizerPreGain, std::memory_order_relaxed);
+    m_reverbPreGain.store(config.reverbPreGain, std::memory_order_relaxed);
+    m_binauralPreGain.store(config.binauralPreGain, std::memory_order_relaxed);
+}
 
 Processing::Processing(const Config& config, const Processing* old, double volume, float deviceSampleRate) :
         config(config),
         deviceSampleRate(deviceSampleRate),
-        amplifier(std::move(old->amplifier)),
         equalizer(std::move(old->equalizer)),
         correctionConvolver(std::move(old->correctionConvolver)),
         convolutionReverb(std::move(old->convolutionReverb)),
         volume(volume)
 {
     binauralRenderer = std::make_shared<BinauralRenderer>(config.binauralToggle, config.binauralRoom, config.binauralConfig, config.binauralAngle, deviceSampleRate, config.binauralTrueStereo);
-    if (old->volume != volume) {
-        amplifier->setVolumeAdjustment(volume / old->volume);
-    }
-    if (amplifier->getToggle() != config.ampToggle) {
-        amplifier->setToggle(config.ampToggle);
-    }
-    if (amplifier->getGain() != config.ampGain) {
-        amplifier->setGain(config.ampGain);
-    }
+
+    m_correctionPreGain.store(config.correctionPreGain, std::memory_order_relaxed);
+    m_equalizerPreGain.store(config.equalizerPreGain, std::memory_order_relaxed);
+    m_reverbPreGain.store(config.reverbPreGain, std::memory_order_relaxed);
+    m_binauralPreGain.store(config.binauralPreGain, std::memory_order_relaxed);
 
     if (equalizer->getToggle() != config.equalizerToggle) {
         equalizer->setToggle(config.equalizerToggle);
@@ -94,7 +91,23 @@ Processing::Processing(const Config& config, const Processing* old, double volum
     }
 }
 
+static void applyPreGain(std::vector<float>& buf, float db) {
+    if (db == 0.0f) return;
+    float lin = std::pow(10.0f, db / 20.0f);
+    for (auto &s : buf) s *= lin;
+}
+
+static void applyPreGain(std::vector<double>& buf, float db) {
+    if (db == 0.0f) return;
+    double lin = std::pow(10.0, static_cast<double>(db) / 20.0);
+    for (auto &s : buf) s *= lin;
+}
+
 void Processing::process(std::vector<float>& input) {
+    float corrGain = m_correctionPreGain.load(std::memory_order_relaxed);
+    if (corrGain != 0.0f)
+        applyPreGain(input, corrGain);
+
     {
         std::lock_guard<std::mutex> lock(swapMutex);
         correctionConvolver->process(input);
@@ -102,11 +115,18 @@ void Processing::process(std::vector<float>& input) {
 
     std::vector<double> doubleInput(input.begin(), input.end());
 
-    amplifier->process(doubleInput);
+    float eqGain = m_equalizerPreGain.load(std::memory_order_relaxed);
+    if (eqGain != 0.0f)
+        applyPreGain(doubleInput, eqGain);
+
     equalizer->process(doubleInput);
 
     std::vector<float> processed(doubleInput.begin(), doubleInput.end());
     input = processed;
+
+    float revGain = m_reverbPreGain.load(std::memory_order_relaxed);
+    if (revGain != 0.0f)
+        applyPreGain(input, revGain);
 
     std::lock_guard<std::mutex> lock(swapMutex);
     convolutionReverb->process(input);
@@ -152,26 +172,6 @@ void Processing::setCorrectionPostGain(float postGainDb) {
 void Processing::setEqualizerToggle(bool toggle) {
     std::lock_guard<std::mutex> lock(swapMutex);
     equalizer->setToggle(toggle);
-}
-
-void Processing::setAmplifierToggle(bool toggle) {
-    std::lock_guard<std::mutex> lock(swapMutex);
-    amplifier->setToggle(toggle);
-}
-
-void Processing::setAmplifierGain(float gain) {
-    std::lock_guard<std::mutex> lock(swapMutex);
-    amplifier->setGain(gain);
-}
-
-void Processing::setAmplifierAuto(bool enabled) {
-    std::lock_guard<std::mutex> lock(swapMutex);
-    amplifier->setAutoGain(enabled);
-}
-
-float Processing::getAmplifierAutoGainValue() {
-    std::lock_guard<std::mutex> lock(swapMutex);
-    return amplifier->getAutoGainValue();
 }
 
 void Processing::setEqualizerBand(int index, float f, float q, float g) {
@@ -237,17 +237,31 @@ void Processing::setBinauralTargetDuration(float sec) {
 }
 
 void Processing::processBinaural(std::vector<float>& buffer) {
+    float bnGain = m_binauralPreGain.load(std::memory_order_relaxed);
+    if (bnGain != 0.0f)
+        applyPreGain(buffer, bnGain);
     binauralRenderer->processInterleaved(buffer);
+}
+
+void Processing::setCorrectionPreGain(float db) {
+    m_correctionPreGain.store(db, std::memory_order_relaxed);
+}
+
+void Processing::setEqualizerPreGain(float db) {
+    m_equalizerPreGain.store(db, std::memory_order_relaxed);
+}
+
+void Processing::setReverbPreGain(float db) {
+    m_reverbPreGain.store(db, std::memory_order_relaxed);
+}
+
+void Processing::setBinauralPreGain(float db) {
+    m_binauralPreGain.store(db, std::memory_order_relaxed);
 }
 
 int Processing::consumeClipCount_Correction() {
     std::lock_guard<std::mutex> lock(swapMutex);
     return correctionConvolver->consumeClipCount();
-}
-
-int Processing::consumeClipCount_Amplifier() {
-    std::lock_guard<std::mutex> lock(swapMutex);
-    return amplifier->consumeClipCount();
 }
 
 int Processing::consumeClipCount_Equalizer() {
