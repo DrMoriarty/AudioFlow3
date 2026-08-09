@@ -136,10 +136,6 @@ void ConvolutionReverb::convolveChannel(const std::vector<float>& input, std::ve
 }
 
 void ConvolutionReverb::process(std::vector<float>& input) {
-    if (mix.currentValueNoChange() <= 0 && mix.getRemaining() <= 0) {
-        return;
-    }
-
     if (numChunks == 0) {
         return;
     }
@@ -174,6 +170,14 @@ void ConvolutionReverb::process(std::vector<float>& input) {
 
         drainL.insert(drainL.end(), outputL.begin(), outputL.begin() + chunkSize);
         drainR.insert(drainR.end(), outputR.begin(), outputR.begin() + chunkSize);
+    }
+
+    if (mix.currentValueNoChange() <= 0 && mix.getRemaining() <= 0) {
+        if (drainL.size() >= numFrames) {
+            drainL.erase(drainL.begin(), drainL.begin() + numFrames);
+            drainR.erase(drainR.begin(), drainR.begin() + numFrames);
+        }
+        return;
     }
 
     if (drainL.size() >= numFrames) {

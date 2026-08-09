@@ -129,6 +129,7 @@ void BinauralRenderer::beginCrossfade() {
 BinauralRenderer::BinauralRenderer(bool toggle, const std::string& brirDir, const std::string& config, int angle, float deviceSampleRate, bool trueStereo)
     : m_toggle(toggle)
     , m_dryWet(Smoother(1.0, 1.0, 0))
+    , m_mix(Smoother(toggle ? 1.0 : 0.0, toggle ? 1.0 : 0.0, 0))
     , m_angle(angle)
     , m_brirDir(brirDir)
     , m_config(config)
@@ -393,7 +394,15 @@ void BinauralRenderer::convolveChannel(const std::vector<float>& input,
 void BinauralRenderer::setToggle(bool v) {
     std::lock_guard<std::mutex> lock(m_mutex);
     m_toggle.store(v, std::memory_order_relaxed);
-    if (v) clearOverlap();
+    double curMix = m_mix.currentValueNoChange();
+    m_mix = Smoother(curMix, v ? 1.0 : 0.0, smootherSteps);
+    if (v) {
+        clearOverlap();
+        m_drainL.clear();
+        m_drainR.clear();
+        m_accumL.clear();
+        m_accumR.clear();
+    }
 }
 
 void BinauralRenderer::setDryWet(double v) {
@@ -445,10 +454,9 @@ void BinauralRenderer::setTargetDuration(float sec) {
 }
 
 void BinauralRenderer::processInterleaved(std::vector<float>& buffer) {
-    if (!m_toggle.load(std::memory_order_relaxed)) return;
-    if (m_numChunks == 0) return;
-
     std::lock_guard<std::mutex> lock(m_mutex);
+    if (m_mix.currentValueNoChange() <= 0 && m_mix.getRemaining() <= 0) return;
+    if (m_numChunks == 0) return;
 
     const size_t numFrames = buffer.size() / 2;
 
@@ -570,14 +578,18 @@ void BinauralRenderer::processInterleaved(std::vector<float>& buffer) {
     }
 
     bool mixConst = m_dryWet.getRemaining() <= 0;
+    bool toggleMixConst = m_mix.getRemaining() <= 0;
 
-    // drain: consume existing drain data, apply drainAmp envelope
+    // drain: consume existing drain data, apply drainAmp and toggle mix
     while (numFrames > 0 && m_drainL.size() >= numFrames) {
         for (size_t i = 0; i < numFrames; ++i) {
             float wetL = m_drainL[i] * drainAmp;
             float wetR = m_drainR[i] * drainAmp;
-            float scale = mixConst ? static_cast<float>(m_dryWet.currentValueNoChange())
-                                   : static_cast<float>(m_dryWet.currentValue());
+            float dw = mixConst ? static_cast<float>(m_dryWet.currentValueNoChange())
+                                : static_cast<float>(m_dryWet.currentValue());
+            float tm = toggleMixConst ? static_cast<float>(m_mix.currentValueNoChange())
+                                      : static_cast<float>(m_mix.currentValue());
+            float scale = dw * tm;
             float oneMinus = 1.0f - scale;
             buffer[2 * i]     = wetL * scale + buffer[2 * i]     * oneMinus;
             buffer[2 * i + 1] = wetR * scale + buffer[2 * i + 1] * oneMinus;

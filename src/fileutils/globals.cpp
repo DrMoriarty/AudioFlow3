@@ -7,6 +7,6 @@
 std::string driver = "AudioFlow 2ch";
 std::string driver2 = "BlackHole 2ch";
 int bufferSize = 4096;
-int smootherSteps = 256;
+int smootherSteps = 1024;
 int volumeSmootherSteps = 8192;
 int convolutionChunkSize = 1024;

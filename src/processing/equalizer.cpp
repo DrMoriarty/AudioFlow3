@@ -23,8 +23,6 @@ void Equalizer::process(std::vector<double>& input) {
     double currentMix = mix.currentValueNoChange();
     double mixRemaining = mix.getRemaining();
 
-    if (currentMix <= 0 && mixRemaining <= 0) return;
-
     size_t numFrames = input.size() / 2;
 
     left.resize(numFrames);

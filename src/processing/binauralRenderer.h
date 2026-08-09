@@ -71,6 +71,7 @@ private:
 
     std::atomic<bool> m_toggle;
     Smoother m_dryWet;
+    Smoother m_mix;
     std::atomic<int> m_angle;
     std::string m_brirDir;
     std::string m_config;
