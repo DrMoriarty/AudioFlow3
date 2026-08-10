@@ -27,6 +27,7 @@ public:
     void recalcHeaderHeight();
     void addToggleSwitch();
     void setToggleChecked(bool checked);
+    bool isToggleChecked() const;
     LedIndicator *addClipLed();
     KnobWidget *addPreAmpKnob(double min, double max, double step, double value, const QString &suffix);
 

@@ -23,6 +23,7 @@ int main(int argc, char *argv[])
     QApplication::setApplicationVersion(APP_VERSION);
     QApplication::setWindowIcon(QIcon(":/icon1024.png"));
     QApplication::setQuitOnLastWindowClosed(false);
+    a.setStyleSheet("QToolTip { color: #ffffff; }");
 
     QTranslator translator;
     const QStringList uiLanguages = QLocale::system().uiLanguages();

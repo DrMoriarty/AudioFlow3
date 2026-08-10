@@ -143,7 +143,11 @@ MainWindow::MainWindow(const Config &config, QWidget *parent)
 
     auto *clipTimer = new QTimer(this);
     connect(clipTimer, &QTimer::timeout, this, [this]() {
-        auto updateLed = [](LedIndicator *led, int count) {
+        auto updateLed = [](LedIndicator *led, int count, bool enabled) {
+            if (!enabled) {
+                led->setState(LedIndicator::Transparent);
+                return;
+            }
             if (count == 0)
                 led->setState(LedIndicator::Transparent);
             else if (count <= 3)
@@ -151,11 +155,11 @@ MainWindow::MainWindow(const Config &config, QWidget *parent)
             else
                 led->setState(LedIndicator::Red, tr("Clipping detected"));
         };
-        updateLed(m_clipLed[0], getClipCount_Correction());
-        updateLed(m_clipLed[1], getClipCount_Equalizer());
-        updateLed(m_clipLed[2], getClipCount_Reverb());
-        updateLed(m_clipLed[3], getClipCount_Binaural());
-        updateLed(m_masterLed, getClipCount_Master());
+        updateLed(m_clipLed[0], getClipCount_Correction(), m_blocks[0]->isToggleChecked());
+        updateLed(m_clipLed[1], getClipCount_Equalizer(), m_blocks[1]->isToggleChecked());
+        updateLed(m_clipLed[2], getClipCount_Reverb(), m_blocks[2]->isToggleChecked());
+        updateLed(m_clipLed[3], getClipCount_Binaural(), m_blocks[3]->isToggleChecked());
+        updateLed(m_masterLed, getClipCount_Master(), true);
     });
     clipTimer->start(500);
 

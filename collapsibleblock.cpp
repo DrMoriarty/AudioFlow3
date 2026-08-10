@@ -176,6 +176,11 @@ void CollapsibleBlock::setToggleChecked(bool checked)
     updateHeaderColor();
 }
 
+bool CollapsibleBlock::isToggleChecked() const
+{
+    return m_toggleSwitch && m_toggleSwitch->isChecked();
+}
+
 void CollapsibleBlock::updateHeaderColor()
 {
     const int shift = 15;
