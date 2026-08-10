@@ -91,7 +91,12 @@ CollapsibleBlock::CollapsibleBlock(const QString &title, QWidget *parent)
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
     headerWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    m_headerHeight = headerWidget->sizeHint().height() + 4; // +4 for QFrame border
+    recalcHeaderHeight(); // +4 for QFrame border (2px top + 2px bottom)
+}
+
+void CollapsibleBlock::recalcHeaderHeight()
+{
+    m_headerHeight = m_headerWidget->sizeHint().height() + m_borderWidth;
 }
 
 void CollapsibleBlock::setContentWidget(QWidget *widget)
@@ -161,6 +166,7 @@ void CollapsibleBlock::addToggleSwitch()
     connect(m_toggleSwitch, &ToggleSwitch::toggled, this, [this](bool) { updateHeaderColor(); });
     static_cast<QBoxLayout *>(headerLayout)->addWidget(m_toggleSwitch, 0, Qt::AlignVCenter);
     updateHeaderColor();
+    recalcHeaderHeight();
 }
 
 void CollapsibleBlock::setToggleChecked(bool checked)
@@ -204,6 +210,7 @@ LedIndicator *CollapsibleBlock::addClipLed() {
     } else {
         headerLayout->addWidget(led, 0, Qt::AlignVCenter);
     }
+    recalcHeaderHeight();
     return led;
 }
 
@@ -213,5 +220,6 @@ KnobWidget *CollapsibleBlock::addPreAmpKnob(double min, double max, double step,
     auto *headerLayout = static_cast<QBoxLayout*>(m_headerWidget->layout());
     int idx = headerLayout->indexOf(m_toggleButton);
     headerLayout->insertWidget(idx + 1, knob, 0, Qt::AlignVCenter);
+    recalcHeaderHeight();
     return knob;
 }

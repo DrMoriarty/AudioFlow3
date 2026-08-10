@@ -24,6 +24,7 @@ public:
     QWidget *headerWidget() const;
     QWidget *contentWidget() const;
     int headerHeight() const;
+    void recalcHeaderHeight();
     void addToggleSwitch();
     void setToggleChecked(bool checked);
     LedIndicator *addClipLed();
@@ -49,6 +50,7 @@ private:
     ToggleSwitch *m_toggleSwitch = nullptr;
     bool m_expanded;
     int m_headerHeight = 0;
+    static const int m_borderWidth = 4;
 };
 
 #endif // COLLAPSIBLEBLOCK_H

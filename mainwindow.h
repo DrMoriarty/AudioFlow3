@@ -47,7 +47,7 @@ private:
     QWidget *m_eqContent = nullptr;
     int m_eqContentHeight = 0;
     int m_blockCollapsedHeight = 0;
-    QVector<int> m_expandedHeights;
+    QVector<int> m_expandedContentH;
     bool m_initialized = false;
     int m_titleBarHeight = -1;
     QLabel *m_latencyLabel = nullptr;

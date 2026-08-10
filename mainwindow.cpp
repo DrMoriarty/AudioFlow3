@@ -177,11 +177,12 @@ void MainWindow::showEvent(QShowEvent *event)
         QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
 
         for (int i = 0; i < m_blocks.size(); ++i) {
-            if (i == 1 && m_eqContentHeight > 0)
-                m_expandedHeights[i] = m_blocks[i]->headerHeight() + m_eqContentHeight;
-            else
-                m_expandedHeights[i] = m_blocks[i]->headerHeight() + m_blocks[i]->contentWidget()->sizeHint().height();
+            m_blocks[i]->recalcHeaderHeight();
         }
+        m_blockCollapsedHeight = m_blocks[0]->headerHeight();
+
+        for (int i = 0; i < m_blocks.size(); ++i)
+            m_expandedContentH[i] = m_blocks[i]->contentWidget()->sizeHint().height();
 
         updateFixedHeight();
     }
@@ -189,15 +190,23 @@ void MainWindow::showEvent(QShowEvent *event)
 
 void MainWindow::updateFixedHeight()
 {
+    if (m_initialized) {
+        for (int i = 0; i < m_blocks.size(); ++i)
+            m_blocks[i]->recalcHeaderHeight();
+        m_blockCollapsedHeight = m_blocks[0]->headerHeight();
+    }
+
     QLayout *cl = centralWidget()->layout();
     int totalH = cl->contentsMargins().top() + cl->contentsMargins().bottom();
     for (int i = 0; i < m_blocks.size(); ++i) {
         CollapsibleBlock *block = m_blocks[i];
         int blockH;
-        if (block == m_blocks[1] && block->isExpanded() && m_eqContentHeight > 0)
-            blockH = m_blocks[1]->headerHeight() + m_eqContentHeight;
-        else if (block->isExpanded() && m_expandedHeights[i] > 0)
-            blockH = m_expandedHeights[i];
+        if (block == m_blocks[1] && block->isExpanded() && m_eqContentHeight > 0) {
+            blockH = block->headerHeight() + m_eqContentHeight;
+            m_expandedContentH[1] = m_eqContentHeight;
+        }
+        else if (block->isExpanded() && m_expandedContentH[i] > 0)
+            blockH = block->headerHeight() + m_expandedContentH[i];
         else if (block->isExpanded())
             blockH = m_blockCollapsedHeight + 100;
         else
@@ -212,7 +221,8 @@ void MainWindow::updateFixedHeight()
     if (m_titleBarHeight <= 0)
         m_titleBarHeight = 28;
 
-    setFixedSize(600, totalH + m_titleBarHeight);
+    int menuBarH = menuBar() ? menuBar()->height() : 0;
+    setFixedSize(600, totalH + m_titleBarHeight + statusBar()->height() + menuBarH);
 }
 
 void MainWindow::updateSliderColor(QSlider *slider)
@@ -387,7 +397,7 @@ void MainWindow::setupBlocks()
     connect(knobBn, &KnobWidget::valueChanged, this, [](double v) { setBinauralPreGain(static_cast<float>(v)); });
 
     m_blockCollapsedHeight = m_blocks[0]->headerHeight();
-    m_expandedHeights.resize(m_blocks.size(), -1);
+    m_expandedContentH.resize(m_blocks.size(), -1);
 
     QWidget *correctingContent = new QWidget();
     QVBoxLayout *ccLayout = new QVBoxLayout(correctingContent);
