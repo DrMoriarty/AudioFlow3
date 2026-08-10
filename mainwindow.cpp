@@ -81,9 +81,33 @@ MainWindow::MainWindow(const Config &config, QWidget *parent)
     statusBar()->addWidget(m_vuL);
     statusBar()->addWidget(m_vuR);
     statusBar()->addWidget(new QLabel("R "));
+
+    m_masterGainLabel = new QLabel(QString("%1 dB").arg(m_config.masterGain, 0, 'f', 1));
+    m_masterGainLabel->setFixedWidth(64);
+    m_masterGainLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    m_masterGainLabel->setStyleSheet("font-size:10px; color:#ccc; font-family:monospace;");
+    statusBar()->addWidget(m_masterGainLabel);
+
+    m_masterSlider = new QSlider(Qt::Horizontal);
+    m_masterSlider->setRange(-600, 120);
+    m_masterSlider->setValue(static_cast<int>(m_config.masterGain * 10.0f));
+    m_masterSlider->setFixedWidth(300);
+    updateSliderColor(m_masterSlider);
+    statusBar()->addWidget(m_masterSlider);
+
+    m_masterLed = new LedIndicator();
+    statusBar()->addWidget(m_masterLed);
+
     statusBar()->addPermanentWidget(m_processLabel);
     statusBar()->addPermanentWidget(m_latencyLabel);
     statusBar()->setStyleSheet("QStatusBar{border-top:1px solid rgb(60,60,60);} QLabel{font-size:10px;}");
+
+    connect(m_masterSlider, &QSlider::valueChanged, this, [this](int value) {
+        float db = static_cast<float>(value) / 10.0f;
+        setMasterGain(db);
+        m_masterGainLabel->setText(QString("%1 dB").arg(db, 0, 'f', 1));
+        updateSliderColor(m_masterSlider);
+    });
 
     auto *vuTimer = new QTimer(this);
     connect(vuTimer, &QTimer::timeout, this, [this]() {
@@ -94,8 +118,8 @@ MainWindow::MainWindow(const Config &config, QWidget *parent)
 
     auto *statusTimer = new QTimer(this);
     connect(statusTimer, &QTimer::timeout, this, [this]() {
-        m_latencyLabel->setText(QString("Latency: %1 ms").arg(getLatencyMs(), 0, 'f', 1));
-        m_processLabel->setText(QString("Process: %1 ms").arg(getProcessTimeMs(), 0, 'f', 2));
+        m_latencyLabel->setText(QString("Lat.: %1 ms").arg(getLatencyMs(), 0, 'f', 1));
+        m_processLabel->setText(QString("Proc.: %1 ms").arg(getProcessTimeMs(), 0, 'f', 2));
         {
             auto s = getCorrectionIRStatus();
             if (!s.hasFile)
@@ -131,6 +155,7 @@ MainWindow::MainWindow(const Config &config, QWidget *parent)
         updateLed(m_clipLed[1], getClipCount_Equalizer());
         updateLed(m_clipLed[2], getClipCount_Reverb());
         updateLed(m_clipLed[3], getClipCount_Binaural());
+        updateLed(m_masterLed, getClipCount_Master());
     });
     clipTimer->start(500);
 

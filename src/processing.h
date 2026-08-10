@@ -49,6 +49,9 @@ public:
     void setReverbPreGain(float db);
     void setBinauralPreGain(float db);
 
+    void setMasterGain(float db);
+    int consumeClipCount_Master();
+
     struct IRStatus {
         bool hasFile;
         bool loaded;
@@ -75,6 +78,8 @@ private:
     std::atomic<float> m_equalizerPreGain{0.0f};
     std::atomic<float> m_reverbPreGain{0.0f};
     std::atomic<float> m_binauralPreGain{0.0f};
+    std::atomic<float> m_masterGain{0.0f};
+    std::atomic<int> m_masterClipCount{0};
 };
 
 

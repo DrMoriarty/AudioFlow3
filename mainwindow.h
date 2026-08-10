@@ -57,6 +57,9 @@ private:
     LedIndicator *m_correctionLed = nullptr;
     LedIndicator *m_reverbLed = nullptr;
     LedIndicator *m_clipLed[4] = {};
+    QLabel *m_masterGainLabel = nullptr;
+    QSlider *m_masterSlider = nullptr;
+    LedIndicator *m_masterLed = nullptr;
 
     static const int BAND_COUNT = 10;
     QSpinBox *m_eqHz[BAND_COUNT] = {};

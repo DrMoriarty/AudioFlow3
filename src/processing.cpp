@@ -4,6 +4,7 @@
 
 #include "processing.h"
 #include "./fileutils/globals.h"
+#include "./processing/clipDetector.h"
 #include <thread>
 #include <mutex>
 #include <cmath>
@@ -23,6 +24,7 @@ Processing::Processing(const Config& config, double volume, float deviceSampleRa
     m_equalizerPreGain.store(config.equalizerPreGain, std::memory_order_relaxed);
     m_reverbPreGain.store(config.reverbPreGain, std::memory_order_relaxed);
     m_binauralPreGain.store(config.binauralPreGain, std::memory_order_relaxed);
+    m_masterGain.store(config.masterGain, std::memory_order_relaxed);
 }
 
 Processing::Processing(const Config& config, const Processing* old, double volume, float deviceSampleRate) :
@@ -241,6 +243,13 @@ void Processing::processBinaural(std::vector<float>& buffer) {
     if (bnGain != 0.0f)
         applyPreGain(buffer, bnGain);
     binauralRenderer->processInterleaved(buffer);
+
+    float masterDb = m_masterGain.load(std::memory_order_relaxed);
+    if (masterDb != 0.0f) {
+        applyPreGain(buffer, masterDb);
+    }
+    if (detectClipping(buffer))
+        m_masterClipCount.fetch_add(1, std::memory_order_relaxed);
 }
 
 void Processing::setCorrectionPreGain(float db) {
@@ -277,4 +286,12 @@ int Processing::consumeClipCount_Reverb() {
 int Processing::consumeClipCount_Binaural() {
     std::lock_guard<std::mutex> lock(swapMutex);
     return binauralRenderer->consumeClipCount();
+}
+
+void Processing::setMasterGain(float db) {
+    m_masterGain.store(db, std::memory_order_relaxed);
+}
+
+int Processing::consumeClipCount_Master() {
+    return m_masterClipCount.exchange(0, std::memory_order_relaxed);
 }

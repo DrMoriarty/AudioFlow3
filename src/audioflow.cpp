@@ -605,6 +605,11 @@ int getClipCount_Binaural() {
     return audioProcessor->consumeClipCount_Binaural();
 }
 
+int getClipCount_Master() {
+    std::lock_guard<std::mutex> lock(audioProcessorMutex);
+    return audioProcessor->consumeClipCount_Master();
+}
+
 void setCorrectionPreGain(float db) {
     audioProcessorMutex.lock();
     audioProcessor->setCorrectionPreGain(db);
@@ -631,6 +636,13 @@ void setBinauralPreGain(float db) {
     audioProcessor->setBinauralPreGain(db);
     audioProcessorMutex.unlock();
     gConfig->binauralPreGain = db;
+}
+
+void setMasterGain(float db) {
+    audioProcessorMutex.lock();
+    audioProcessor->setMasterGain(db);
+    audioProcessorMutex.unlock();
+    gConfig->masterGain = db;
 }
 
 void setUIExpandedCorrecting(bool expanded) {

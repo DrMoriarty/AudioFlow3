@@ -39,11 +39,13 @@ int getClipCount_Correction();
 int getClipCount_Equalizer();
 int getClipCount_Reverb();
 int getClipCount_Binaural();
+int getClipCount_Master();
 
 void setCorrectionPreGain(float db);
 void setEqualizerPreGain(float db);
 void setReverbPreGain(float db);
 void setBinauralPreGain(float db);
+void setMasterGain(float db);
 
 void setUIExpandedCorrecting(bool expanded);
 void setUIExpandedPreamplifier(bool expanded);

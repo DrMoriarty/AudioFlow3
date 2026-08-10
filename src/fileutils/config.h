@@ -26,6 +26,7 @@ public:
     float equalizerPreGain;
     float reverbPreGain;
     float binauralPreGain;
+    float masterGain;
 
     bool equalizerToggle;
     std::vector<float> equalizerF;

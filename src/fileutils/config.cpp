@@ -21,6 +21,7 @@ Config::Config(const std::string& configPath) : configFilePath(configPath) {
     equalizerPreGain = 0.0f;
     reverbPreGain = 0.0f;
     binauralPreGain = 0.0f;
+    masterGain = 0.0f;
 
     equalizerToggle = false;
     equalizerF = {60.0f, 170.0f, 310.0f, 600.0f, 1000.0f, 3000.0f, 6000.0f, 12000.0f, 14000.0f, 16000.0f};
@@ -99,6 +100,7 @@ bool Config::loadConfig() {
     float equalizerPreGain = data.contains("equalizer") && data["equalizer"].contains("preGain") ? data["equalizer"]["preGain"].get<float>() : 0.0f;
     float reverbPreGain = data.contains("reverb") && data["reverb"].contains("preGain") ? data["reverb"]["preGain"].get<float>() : 0.0f;
     float binauralPreGain = data.contains("binaural") && data["binaural"].contains("preGain") ? data["binaural"]["preGain"].get<float>() : 0.0f;
+    float masterGain = data.contains("masterGain") ? data["masterGain"].get<float>() : 0.0f;
 
     int bufferSize = data.contains("bufferSize") ? data["bufferSize"].get<int>() : 4096;
 
@@ -109,7 +111,7 @@ bool Config::loadConfig() {
     bool uiExpandedSettings = data.contains("ui") && data["ui"].contains("expanded") && data["ui"]["expanded"].contains("settings") ? data["ui"]["expanded"]["settings"].get<bool>() : false;
     bool uiExpandedBinaural = data.contains("ui") && data["ui"].contains("expanded") && data["ui"]["expanded"].contains("binaural") ? data["ui"]["expanded"]["binaural"].get<bool>() : false;
 
-    if (ampToggle != this->ampToggle || ampAuto != this->ampAuto || ampGain != this->ampGain || equalizerToggle != this->equalizerToggle || equalizerF != this->equalizerF || equalizerQ != this->equalizerQ || equalizerG != this->equalizerG || equalizerPreset != this->equalizerPreset || reverbToggle != this->reverbToggle || reverbDryWet != this->reverbDryWet || irFilePath != this->irFilePath || correctionToggle != this->correctionToggle || correctionDryWet != this->correctionDryWet || correctionIRFilePath != this->correctionIRFilePath || correctionPostGain != this->correctionPostGain || bufferSize != this->bufferSize || uiExpandedCorrecting != this->uiExpandedCorrecting || uiExpandedPreamplifier != this->uiExpandedPreamplifier || uiExpandedEqualizer != this->uiExpandedEqualizer || uiExpandedReverb != this->uiExpandedReverb || uiExpandedSettings != this->uiExpandedSettings || uiExpandedBinaural != this->uiExpandedBinaural || correctionRecent != this->correctionRecent || binauralToggle != this->binauralToggle || binauralDryWet != this->binauralDryWet || binauralRoom != this->binauralRoom || binauralAngle != this->binauralAngle || binauralConfig != this->binauralConfig || binauralTrueStereo != this->binauralTrueStereo || correctionPreGain != this->correctionPreGain || equalizerPreGain != this->equalizerPreGain || reverbPreGain != this->reverbPreGain || binauralPreGain != this->binauralPreGain) {
+    if (ampToggle != this->ampToggle || ampAuto != this->ampAuto || ampGain != this->ampGain || equalizerToggle != this->equalizerToggle || equalizerF != this->equalizerF || equalizerQ != this->equalizerQ || equalizerG != this->equalizerG || equalizerPreset != this->equalizerPreset || reverbToggle != this->reverbToggle || reverbDryWet != this->reverbDryWet || irFilePath != this->irFilePath || correctionToggle != this->correctionToggle || correctionDryWet != this->correctionDryWet || correctionIRFilePath != this->correctionIRFilePath || correctionPostGain != this->correctionPostGain || bufferSize != this->bufferSize || uiExpandedCorrecting != this->uiExpandedCorrecting || uiExpandedPreamplifier != this->uiExpandedPreamplifier || uiExpandedEqualizer != this->uiExpandedEqualizer || uiExpandedReverb != this->uiExpandedReverb || uiExpandedSettings != this->uiExpandedSettings || uiExpandedBinaural != this->uiExpandedBinaural || correctionRecent != this->correctionRecent || binauralToggle != this->binauralToggle || binauralDryWet != this->binauralDryWet || binauralRoom != this->binauralRoom || binauralAngle != this->binauralAngle || binauralConfig != this->binauralConfig || binauralTrueStereo != this->binauralTrueStereo || correctionPreGain != this->correctionPreGain || equalizerPreGain != this->equalizerPreGain || reverbPreGain != this->reverbPreGain || binauralPreGain != this->binauralPreGain || masterGain != this->masterGain) {
         this->ampToggle = ampToggle;
         this->ampAuto = ampAuto;
         this->ampGain = ampGain;
@@ -142,6 +144,7 @@ bool Config::loadConfig() {
         this->equalizerPreGain = equalizerPreGain;
         this->reverbPreGain = reverbPreGain;
         this->binauralPreGain = binauralPreGain;
+        this->masterGain = masterGain;
 
         this->bufferSize = bufferSize;
 
@@ -197,6 +200,7 @@ bool Config::saveConfig() {
             {"preGain", binauralPreGain}
         }},
         {"bufferSize", bufferSize},
+        {"masterGain", masterGain},
         {"ui", {
             {"expanded", {
                 {"correcting", uiExpandedCorrecting},
