@@ -63,7 +63,7 @@ set_target_properties(AudioFlow3 PROPERTIES
 
 qt_add_translations(
     TARGETS AudioFlow3
-    TS_FILES AudioFlow3_en_001.ts
+    TS_FILES AudioFlow3_en_001.ts AudioFlow3_ru_RU.ts
 )
 
 find_library(COREAUDIO_LIB CoreAudio)
