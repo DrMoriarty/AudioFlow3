@@ -9,6 +9,8 @@
 #include <QVBoxLayout>
 #include <QSizePolicy>
 #include <QLayout>
+#include <QMouseEvent>
+#include <QTimer>
 
 CollapsibleBlock::CollapsibleBlock(const QString &title, QWidget *parent)
     : QFrame(parent), m_expanded(false)
@@ -76,6 +78,13 @@ CollapsibleBlock::CollapsibleBlock(const QString &title, QWidget *parent)
 
     m_mainLayout->addWidget(headerWidget);
 
+    headerWidget->installEventFilter(this);
+
+    m_clickTimer = new QTimer(this);
+    m_clickTimer->setSingleShot(true);
+    m_clickTimer->setInterval(250);
+    connect(m_clickTimer, &QTimer::timeout, this, &CollapsibleBlock::toggle);
+
     m_contentWidget = new QWidget(this);
     m_contentWidget->setMinimumHeight(30);
     m_contentWidget->setVisible(false);
@@ -129,6 +138,27 @@ bool CollapsibleBlock::isExpanded() const
 void CollapsibleBlock::toggle()
 {
     setExpanded(!m_expanded);
+}
+
+bool CollapsibleBlock::eventFilter(QObject *obj, QEvent *event)
+{
+    if (obj == m_headerWidget) {
+        if (event->type() == QEvent::MouseButtonDblClick) {
+            if (m_toggleSwitch) {
+                m_clickTimer->stop();
+                m_toggleSwitch->setChecked(!m_toggleSwitch->isChecked());
+            }
+            return true;
+        }
+        if (event->type() == QEvent::MouseButtonPress) {
+            auto *me = static_cast<QMouseEvent *>(event);
+            if (me->button() == Qt::LeftButton) {
+                m_clickTimer->start();
+            }
+            return true;
+        }
+    }
+    return QFrame::eventFilter(obj, event);
 }
 
 void CollapsibleBlock::updateChevron()

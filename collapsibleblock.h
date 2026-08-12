@@ -10,6 +10,7 @@ class QWidget;
 class ToggleSwitch;
 class LedIndicator;
 class KnobWidget;
+class QTimer;
 
 class CollapsibleBlock : public QFrame
 {
@@ -35,6 +36,9 @@ signals:
     void expandedChanged();
     void toggled(bool checked);
 
+protected:
+    bool eventFilter(QObject *obj, QEvent *event) override;
+
 private slots:
     void toggle();
 
@@ -49,6 +53,7 @@ private:
     QWidget *m_leftSpacer;
     QVBoxLayout *m_mainLayout;
     ToggleSwitch *m_toggleSwitch = nullptr;
+    QTimer *m_clickTimer = nullptr;
     bool m_expanded;
     int m_headerHeight = 0;
     static const int m_borderWidth = 4;
